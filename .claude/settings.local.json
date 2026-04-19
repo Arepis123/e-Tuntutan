@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php --version)",
+      "Bash(composer --version)",
+      "Read(//c/xampp/htdocs/**)",
+      "Bash(mv e-Tuntutan/CLAUDE.md .)",
+      "Bash(composer create-project:*)",
+      "Bash(mv:*)",
+      "Bash(ls /c/xampp/htdocs/*.md)",
+      "Bash(cp -r e-Tuntutan-temp/. e-Tuntutan/)",
+      "Bash(rm -rf e-Tuntutan-temp)",
+      "Bash(mv CLAUDE.md e-Tuntutan/)",
+      "Bash(composer require:*)",
+      "Bash(php -m)",
+      "Bash(php -r \"echo PHP_VERSION;\")",
+      "Bash(composer remove:*)",
+      "Bash(php artisan:*)",
+      "Bash(mysql:*)",
+      "Bash(npm install:*)",
+      "Bash(find /c/xampp/htdocs/e-Tuntutan/resources/views/components -name \"⚡*.blade.php\" -delete)",
+      "Bash(composer show:*)",
+      "Bash(xargs php:*)",
+      "Bash(npm run:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:fluxui.dev)",
+      "Bash(node_modules/.bin/tailwindcss --version)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(taskkill:*)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :8000)",
+      "Bash(cmd:*)",
+      "Bash(findstr \":8000 \")"
+    ]
+  }
+}
