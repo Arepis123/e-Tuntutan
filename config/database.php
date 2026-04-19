@@ -60,6 +60,22 @@ return [
             'engine' => null,
         ],
 
+        'worker_db' => [
+            'driver' => 'mysql',
+            'host' => env('WORKER_DB_HOST', '127.0.0.1'),
+            'port' => env('WORKER_DB_PORT', '3306'),
+            'database' => env('WORKER_DB_DATABASE', 'eclab_skim_test'),
+            'username' => env('WORKER_DB_USERNAME', 'root'),
+            'password' => env('WORKER_DB_PASSWORD', ''),
+            'unix_socket' => '',
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => false,
+            'engine' => null,
+        ],
+
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),

@@ -108,6 +108,19 @@ class ClaimDetail extends Component
         $this->claim->refresh();
     }
 
+    public function markDocumentReceived(int $documentId): void
+    {
+        $doc = $this->claim->documents()->findOrFail($documentId);
+
+        $doc->update([
+            'is_received' => true,
+            'received_at' => now(),
+            'received_by' => Auth::id(),
+        ]);
+
+        $this->claim->refresh();
+    }
+
     public function uploadDocument(): void
     {
         $this->validate([

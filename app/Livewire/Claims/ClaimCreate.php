@@ -21,26 +21,26 @@ class ClaimCreate extends Component
 
     // Step tracking
     public int $step = 1;
+    public string $direction = 'forward';
 
     // Step 1: Claim type
     public string $claimType = '';
     public string $claimCategory = '';
 
-    // Step 2: Worker info
-    public string $workerType = 'existing';
-    public string $passportNumber = '';
-    public ?Worker $foundWorker = null;
+    public function updatedClaimType(): void
+    {
+        if ($this->claimType === 'fwhs' && $this->claimCategory === 'death') {
+            $this->claimCategory = '';
+        }
+    }
 
-    // New worker fields
-    public string $workerName = '';
-    public string $nationality = '';
-    public string $dateOfBirth = '';
-    public string $employerName = '';
-    public string $employerIc = '';
-    public string $phone = '';
-    public string $address = '';
+    // Step 2: Worker info
+    public string $passportNumber = '';
+    public ?array $foundWorker = null;
+    public bool $workerNotFound = false;
 
     // Step 3: Incident details
+    public string $incidentType = '';
     public string $incidentDate = '';
     public string $incidentDescription = '';
     public string $hospitalName = '';
@@ -53,19 +53,12 @@ class ClaimCreate extends Component
     protected function rules(): array
     {
         $rules = [
-            'claimType'     => 'required|in:fwhs,green_card,perkeso',
-            'claimCategory' => 'required|in:hospitalization,death',
-            'incidentDate'  => 'required|date',
+            'claimType'           => 'required|in:fwhs,green_card,perkeso',
+            'claimCategory'       => 'required|in:hospitalization,death',
+            'passportNumber'      => 'required|string|max:50',
+            'incidentDate'        => 'required|date',
             'incidentDescription' => 'required|min:10',
         ];
-
-        if ($this->workerType === 'new') {
-            $rules['workerName']     = 'required|string|max:255';
-            $rules['passportNumber'] = 'required|string|max:50';
-            $rules['nationality']    = 'required|string|max:100';
-        } else {
-            $rules['passportNumber'] = 'required|string|max:50';
-        }
 
         if ($this->claimCategory === 'hospitalization') {
             $rules['hospitalName']  = 'required|string|max:255';
@@ -78,103 +71,158 @@ class ClaimCreate extends Component
     public function lookupWorker(): void
     {
         $this->validate(['passportNumber' => 'required|string']);
-        $this->foundWorker = Worker::where('passport_number', $this->passportNumber)->first();
 
-        if (! $this->foundWorker) {
-            $this->addError('passportNumber', 'Worker not found. Please add as a new worker.');
-            $this->workerType = 'new';
+        $this->foundWorker = null;
+        $this->workerNotFound = false;
+
+        $worker = \DB::connection('worker_db')
+            ->table('workers')
+            ->leftJoin('mst_countries', 'workers.wkr_country', '=', 'mst_countries.cty_id')
+            ->leftJoin('contractors', 'workers.wkr_currentemp', '=', 'contractors.ctr_clab_no')
+            ->leftJoin('mst_states', 'contractors.ctr_state', '=', 'mst_states.state_id')
+            ->select(
+                'workers.*',
+                'mst_countries.cty_desc as country_name',
+                'contractors.ctr_comp_name as contractor_name',
+                'contractors.ctr_addr1 as contractor_addr1',
+                'contractors.ctr_addr2 as contractor_addr2',
+                'contractors.ctr_addr3 as contractor_addr3',
+                'contractors.ctr_pcode as contractor_pcode',
+                'mst_states.state_name as contractor_state'
+            )
+            ->where('wkr_passno', $this->passportNumber)
+            ->first();
+
+        if (! $worker) {
+            $this->workerNotFound = true;
+            return;
         }
+
+        $isOutsource = \DB::connection('worker_db')
+            ->table('contract_worker')
+            ->where('con_wkr_id', $worker->wkr_id)
+            ->exists();
+
+        $this->foundWorker = [
+            'id'                  => $worker->wkr_id,
+            'name'                => $worker->wkr_name ?? '',
+            'passport_number'     => $worker->wkr_passno,
+            'passport_expiry'     => ($worker->wkr_passexp && !in_array($worker->wkr_passexp, ['0000-00-00', '1970-01-01'])) ? $worker->wkr_passexp : 'NO DATA FOUND',
+            'nationality'         => $worker->country_name ?? '',
+            'date_of_birth'       => $worker->wkr_dob ?? null,
+            'gender'              => match((string)($worker->wkr_gender ?? '')) {
+                '1' => 'MALE',
+                '2' => 'FEMALE',
+                default => null,
+            },
+            'permit_expiry'       => ($worker->wkr_permitexp && !in_array($worker->wkr_permitexp, ['0000-00-00', '1970-01-01'])) ? $worker->wkr_permitexp : 'NO DATA FOUND',
+            'phone'               => $worker->wkr_tel ?? null,
+            'address'             => $worker->wkr_address1 ?? null,
+            'contractor_name'    => $worker->contractor_name ?? null,
+            'contractor_address' => implode(', ', array_filter(array_map(
+                fn($part) => trim($part ?? '', " \t\n\r,"),
+                [
+                    $worker->contractor_addr1 ?? null,
+                    $worker->contractor_addr2 ?? null,
+                    $worker->contractor_addr3 ?? null,
+                    $worker->contractor_pcode ?? null,
+                    $worker->contractor_state ?? null,
+                ]
+            ))),
+            'worker_type'         => $isOutsource ? 'outsource' : 'normal',
+        ];
     }
 
     public function nextStep(): void
     {
-        match ($this->step) {
-            1 => $this->validate([
-                'claimType'     => 'required|in:fwhs,green_card,perkeso',
-                'claimCategory' => 'required|in:hospitalization,death',
-            ]),
-            2 => $this->validateWorkerStep(),
-            3 => $this->validate([
-                'incidentDate'        => 'required|date',
-                'incidentDescription' => 'required|min:10',
-            ]),
-            default => null,
-        };
+        if ($this->step === 2) {
+            if (! $this->validateWorkerStep()) return;
+        } else {
+            match ($this->step) {
+                1 => $this->validate([
+                    'claimType'     => 'required|in:fwhs,green_card,perkeso',
+                    'claimCategory' => [
+                        'required',
+                        $this->claimType === 'fwhs' ? 'in:hospitalization' : 'in:hospitalization,death',
+                    ],
+                ]),
+                3 => $this->validate([
+                    'incidentType'        => 'required|in:accident,non_accident',
+                    'incidentDate'        => 'required|date',
+                    'incidentDescription' => 'required|min:10',
+                ]),
+                default => null,
+            };
+        }
 
+        $this->direction = 'forward';
         $this->step++;
     }
 
-    protected function validateWorkerStep(): void
+    protected function validateWorkerStep(): bool
     {
-        if ($this->workerType === 'existing' && ! $this->foundWorker) {
-            $this->addError('passportNumber', 'Please search and confirm the worker first.');
-            return;
+        $this->validate(['passportNumber' => 'required|string']);
+
+        if (! $this->foundWorker) {
+            $this->addError('passportNumber', 'Please search and confirm the worker before proceeding.');
+            return false;
         }
 
-        if ($this->workerType === 'new') {
-            $this->validate([
-                'workerName'     => 'required|string|max:255',
-                'passportNumber' => 'required|string|max:50|unique:workers,passport_number',
-                'nationality'    => 'required|string|max:100',
-            ]);
-        }
+        return true;
     }
 
     public function previousStep(): void
     {
+        $this->direction = 'backward';
         $this->step = max(1, $this->step - 1);
     }
 
     public function submit(): void
     {
-        $this->validate();
+        $this->validate([
+            'claimType'           => 'required|in:fwhs,green_card,perkeso',
+            'claimCategory'       => 'required|in:hospitalization,death',
+            'incidentDate'        => 'required|date',
+            'incidentDescription' => 'required|min:10',
+        ]);
 
         DB::transaction(function () {
-            // Create or get worker
-            if ($this->workerType === 'new') {
-                $worker = Worker::create([
-                    'name'            => $this->workerName,
-                    'passport_number' => $this->passportNumber,
-                    'nationality'     => $this->nationality,
-                    'date_of_birth'   => $this->dateOfBirth ?: null,
-                    'worker_type'     => 'outsource',
-                    'employer_name'   => $this->employerName,
-                    'employer_ic'     => $this->employerIc,
-                    'phone'           => $this->phone,
-                    'address'         => $this->address,
-                ]);
-            } else {
-                $worker = $this->foundWorker;
-            }
+            // Upsert worker into local DB from found worker data
+            $worker = Worker::updateOrCreate(
+                ['passport_number' => $this->foundWorker['passport_number']],
+                [
+                    'name'          => $this->foundWorker['name'],
+                    'nationality'   => $this->foundWorker['nationality'],
+                    'date_of_birth' => $this->foundWorker['date_of_birth'],
+                    'worker_type'   => $this->foundWorker['worker_type'],
+                    'phone'         => $this->foundWorker['phone'],
+                    'address'       => $this->foundWorker['address'],
+                    'employer_name'    => $this->foundWorker['contractor_name'],
+                    'employer_address' => $this->foundWorker['contractor_address'],
+                ]
+            );
 
             $claim = Claim::create([
                 'worker_id'           => $worker->id,
                 'user_id'             => Auth::id(),
                 'claim_type'          => $this->claimType,
                 'claim_category'      => $this->claimCategory,
+                'incident_type'       => $this->incidentType,
                 'status'              => 'open',
                 'incident_date'       => $this->incidentDate,
                 'incident_description' => $this->incidentDescription,
-                'hospital_name'       => $this->hospitalName ?: null,
-                'admission_date'      => $this->admissionDate ?: null,
-                'discharge_date'      => $this->dischargeDate ?: null,
+                'hospital_name'       => $this->hospitalName ?? null,
+                'admission_date'      => $this->admissionDate ?? null,
+                'discharge_date'      => $this->dischargeDate ?? null,
                 'submitted_at'        => now(),
             ]);
 
-            // Store uploaded documents
-            foreach ($this->uploadedFiles as $docType => $file) {
-                if ($file) {
-                    $path = $file->store("claims/{$claim->id}", 'local');
-                    $claim->documents()->create([
-                        'document_type'     => $docType,
-                        'original_filename' => $file->getClientOriginalName(),
-                        'stored_filename'   => basename($path),
-                        'path'              => $path,
-                        'file_size'         => $file->getSize(),
-                        'mime_type'         => $file->getMimeType(),
-                        'uploaded_by'       => Auth::id(),
-                    ]);
-                }
+            // Pre-create document records for tracking physical receipt
+            foreach (array_keys($this->getRequiredDocuments()) as $docType) {
+                $claim->documents()->create([
+                    'document_type' => $docType,
+                    'is_received'   => false,
+                ]);
             }
 
             // Notify PICs
@@ -199,22 +247,34 @@ class ClaimCreate extends Component
             return [];
         }
 
-        $docs = match ($this->claimCategory) {
-            'hospitalization' => [
-                'accident_fcl'    => 'Accident FCL Form',
-                'original_receipt' => 'Original Receipt',
-                'discharge_note'  => 'Discharge Note',
-                'doctor_letter'   => "Doctor's Letter",
-            ],
+        if ($this->claimCategory === 'hospitalization') {
+            if ($this->incidentType === 'accident') {
+                return [
+                    'accident_fcl'    => 'Accident FCL Form',
+                    'original_receipt' => 'Original Receipt',
+                    'discharge_note'  => 'Discharge Note',
+                    'doctor_letter'   => "Doctor's Letter",
+                ];
+            }
+            if ($this->incidentType === 'non_accident') {
+                return [
+                    'non_accident_fcl' => 'Non-Accident FCL Form',
+                    'original_receipt' => 'Original Receipt',
+                    'discharge_note'   => 'Discharge Note',
+                    'doctor_letter'    => "Doctor's Letter",
+                ];
+            }
+            return [];
+        }
+
+        return match ($this->claimCategory) {
             'death' => [
-                'death_cert'   => 'Death Certificate',
-                'body_receipt' => 'Body Delivery Receipt',
+                'death_cert'    => 'Death Certificate',
+                'body_receipt'  => 'Body Delivery Receipt',
                 'police_report' => 'Police Report',
                 'embassy_letter' => 'Embassy Letter',
             ],
             default => [],
         };
-
-        return $docs;
     }
 }

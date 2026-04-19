@@ -18,6 +18,7 @@ class Claim extends Model
         'user_id',
         'claim_type',
         'claim_category',
+        'incident_type',
         'status',
         'forwarded_to',
         'incident_date',

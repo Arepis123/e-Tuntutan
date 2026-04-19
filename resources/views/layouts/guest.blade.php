@@ -10,7 +10,7 @@
     @fluxAppearance
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-zinc-50 antialiased font-sans">
+<body class="min-h-screen bg-zinc-50 dark:bg-zinc-950 antialiased font-sans">
 
     <div class="min-h-screen flex">
 
@@ -49,17 +49,17 @@
                     <div class="flex gap-6 mt-10">
                         <div>
                             <p class="text-2xl font-bold text-white">3</p>
-                            <p class="text-sky-200 text-sm">Claim Types</p>
+                            <p class="text-sky-100 text-sm">Claim Types</p>
                         </div>
                         <div class="w-px bg-white/20"></div>
                         <div>
                             <p class="text-2xl font-bold text-white">100%</p>
-                            <p class="text-sky-200 text-sm">Paperless</p>
+                            <p class="text-sky-100 text-sm">Paperless</p>
                         </div>
                         <div class="w-px bg-white/20"></div>
                         <div>
                             <p class="text-2xl font-bold text-white">CLAB</p>
-                            <p class="text-sky-200 text-sm">Managed</p>
+                            <p class="text-sky-100 text-sm">Managed</p>
                         </div>
                     </div>
                 </div>
@@ -69,14 +69,14 @@
         </div>
 
         {{-- Right: Auth Card --}}
-        <div class="w-full lg:w-1/3 flex flex-col items-center justify-center p-6 sm:p-10 bg-white min-h-screen">
+        <div class="w-full lg:w-1/3 flex flex-col items-center justify-center p-6 sm:p-10 bg-white dark:bg-zinc-900 min-h-screen">
 
             {{-- Mobile brand --}}
             <div class="lg:hidden flex items-center gap-3 mb-8">
-                <div class="w-9 h-9 rounded-xl bg-zinc-900 flex items-center justify-center">
+                <div class="w-9 h-9 rounded-xl bg-zinc-900 dark:bg-zinc-700 flex items-center justify-center">
                     <flux:icon.document-text class="w-5 h-5 text-white" />
                 </div>
-                <span class="text-lg font-semibold text-zinc-900">e-Tuntutan</span>
+                <span class="text-lg font-semibold text-zinc-900 dark:text-white">e-Tuntutan</span>
             </div>
 
             <div class="w-full max-w-sm">

@@ -101,47 +101,57 @@
             </div>
 
             {{-- Documents --}}
-            <div class="bg-white rounded-xl border border-zinc-200 p-6">
-                <flux:heading size="lg" class="mb-4">Documents</flux:heading>
+            <flux:card class="dark:bg-zinc-900">
+                <flux:heading size="lg" class="mb-1">Required Documents</flux:heading>
+                <flux:text class="mb-4 text-sm">Mark each document as received when the physical copy arrives.</flux:text>
 
                 @if ($claim->documents->count() > 0)
-                <div class="space-y-2 mb-4">
+                <div class="space-y-3">
                     @foreach ($claim->documents as $doc)
-                    <div class="flex items-center justify-between p-3 bg-zinc-50 rounded-lg">
+                    <div class="flex items-center justify-between p-3 rounded-lg border
+                        {{ $doc->is_received
+                            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                            : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700' }}">
                         <div class="flex items-center gap-3">
-                            <flux:icon.document class="w-5 h-5 text-zinc-400" />
+                            @if ($doc->is_received)
+                                <flux:icon.check-circle class="w-5 h-5 text-green-500 shrink-0" />
+                            @else
+                                <flux:icon.clock class="w-5 h-5 text-zinc-400 shrink-0" />
+                            @endif
                             <div>
-                                <p class="text-sm font-medium">{{ $doc->getDocumentTypeLabel() }}</p>
-                                <p class="text-xs text-zinc-400">{{ $doc->original_filename }}</p>
+                                <p class="text-sm font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->getDocumentTypeLabel() }}</p>
+                                @if ($doc->is_received)
+                                <p class="text-xs text-green-600 dark:text-green-400">
+                                    Received on {{ $doc->received_at->format('d/m/Y H:i') }}
+                                    @if($doc->receiver) by {{ $doc->receiver->name }} @endif
+                                </p>
+                                @else
+                                <p class="text-xs text-zinc-400">Awaiting physical document</p>
+                                @endif
                             </div>
                         </div>
-                        <flux:button size="sm" variant="ghost" icon="arrow-down-tray" href="#">Download</flux:button>
+                        @if (!$doc->is_received)
+                        @can('claims.approve')
+                        <flux:button
+                            wire:click="markDocumentReceived({{ $doc->id }})"
+                            wire:confirm="Mark '{{ $doc->getDocumentTypeLabel() }}' as received?"
+                            size="sm"
+                            variant="ghost"
+                            icon="check"
+                        >
+                            Mark Received
+                        </flux:button>
+                        @endcan
+                        @else
+                        <flux:badge color="green" size="sm">Received</flux:badge>
+                        @endif
                     </div>
                     @endforeach
                 </div>
+                @else
+                <p class="text-sm text-zinc-400">No documents tracked yet.</p>
                 @endif
-
-                @can('documents.upload')
-                <div class="border-t border-zinc-200 pt-4">
-                    <flux:heading size="sm" class="mb-3">Add Document</flux:heading>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <flux:select wire:model="newDocumentType" placeholder="Select Document Type">
-                            <flux:select.option value="approval_letter">Approval Letter</flux:select.option>
-                            <flux:select.option value="payment_slip">Payment Slip</flux:select.option>
-                            <flux:select.option value="passport_copy">Passport Copy</flux:select.option>
-                            <flux:select.option value="beneficiary_bank">Beneficiary Bank Details</flux:select.option>
-                            <flux:select.option value="beneficiary_info">Beneficiary Information</flux:select.option>
-                            <flux:select.option value="accident_fcl">Accident FCL Form</flux:select.option>
-                            <flux:select.option value="police_report">Police Report</flux:select.option>
-                        </flux:select>
-                        <flux:input type="file" wire:model="newDocument" accept=".pdf,.jpg,.jpeg,.png" />
-                    </div>
-                    <flux:button wire:click="uploadDocument" size="sm" class="mt-3" icon="arrow-up-tray">
-                        Upload
-                    </flux:button>
-                </div>
-                @endcan
-            </div>
+            </flux:card>
 
             {{-- Notes --}}
             <div class="bg-white rounded-xl border border-zinc-200 p-6">

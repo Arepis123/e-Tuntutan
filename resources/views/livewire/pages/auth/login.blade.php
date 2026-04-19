@@ -41,22 +41,26 @@ new #[Layout('layouts.guest')] class extends Component
             autocomplete="username"
             required
         />
-        @error('form.username') <p class="text-red-500 text-sm -mt-3">{{ $message }}</p> @enderror
+        @error('form.username') <p class="text-red-500 dark:text-red-400 text-sm -mt-3">{{ $message }}</p> @enderror
 
         <flux:input
             wire:model="form.password"
             label="Password"
             type="password"
-            placeholder="••••••••"
+            placeholder="Enter your password"
             autocomplete="current-password"
             viewable
             required
         />
-        @error('form.password') <p class="text-red-500 text-sm -mt-3">{{ $message }}</p> @enderror
+        @error('form.password') <p class="text-red-500 dark:text-red-400 text-sm -mt-3">{{ $message }}</p> @enderror
 
-        <div class="flex items-center">
-            <flux:checkbox wire:model="form.remember" label="Remember me" />
+        <div class="flex items-center justify-center">
+            <flux:text class="text-center">Please use your credentials from the e-CLAB Portal to log in.</flux:text>
         </div>
+
+        <!-- <div class="flex items-center">
+            <flux:checkbox wire:model="form.remember" label="Remember me" />
+        </div> -->
 
         <flux:button type="submit" variant="primary" class="w-full">
             Sign in

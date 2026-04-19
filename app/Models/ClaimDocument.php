@@ -18,6 +18,14 @@ class ClaimDocument extends Model
         'file_size',
         'mime_type',
         'uploaded_by',
+        'is_received',
+        'received_at',
+        'received_by',
+    ];
+
+    protected $casts = [
+        'is_received' => 'boolean',
+        'received_at' => 'datetime',
     ];
 
     public function claim(): BelongsTo
@@ -30,6 +38,11 @@ class ClaimDocument extends Model
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 
+    public function receiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
+    }
+
     public function getUrlAttribute(): string
     {
         return Storage::disk($this->disk)->url($this->path);
@@ -38,7 +51,8 @@ class ClaimDocument extends Model
     public function getDocumentTypeLabel(): string
     {
         return match ($this->document_type) {
-            'accident_fcl'    => 'Accident FCL Form',
+            'accident_fcl'     => 'Accident FCL Form',
+            'non_accident_fcl' => 'Non-Accident FCL Form',
             'original_receipt' => 'Original Receipt',
             'discharge_note'  => 'Discharge Note',
             'doctor_letter'   => "Doctor's Letter",

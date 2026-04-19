@@ -17,6 +17,7 @@ class Worker extends Model
         'date_of_birth',
         'worker_type',
         'employer_name',
+        'employer_address',
         'employer_ic',
         'phone',
         'address',
