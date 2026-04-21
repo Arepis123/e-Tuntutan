@@ -32,6 +32,8 @@ class Claim extends Model
         'closed_at',
         'rejection_reason',
         'notes',
+        'tin_no',
+        'sst_no',
     ];
 
     protected $casts = [

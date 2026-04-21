@@ -39,11 +39,12 @@ class UserList extends Component
     public ?int $editingUserId = null;
 
     public array $editForm = [
-        'name'     => '',
-        'email'    => '',
-        'phone'    => '',
-        'role'     => '',
-        'password' => '',
+        'name'                 => '',
+        'email'                => '',
+        'phone'                => '',
+        'role'                 => '',
+        'password'             => '',
+        'notify_on_submission' => true,
     ];
 
     public function updatedSearch(): void { $this->resetPage(); }
@@ -90,11 +91,12 @@ class UserList extends Component
 
         $this->editingUserId = $userId;
         $this->editForm = [
-            'name'     => $user->name,
-            'email'    => $user->email,
-            'phone'    => $user->phone ?? '',
-            'role'     => $user->roles->first()?->name ?? '',
-            'password' => '',
+            'name'                 => $user->name,
+            'email'                => $user->email,
+            'phone'                => $user->phone ?? '',
+            'role'                 => $user->roles->first()?->name ?? '',
+            'password'             => '',
+            'notify_on_submission' => (bool) $user->notify_on_submission,
         ];
 
         $this->modal('edit-user')->show();
@@ -113,16 +115,17 @@ class UserList extends Component
         $user = User::findOrFail($this->editingUserId);
 
         $user->update([
-            'name'  => $this->editForm['name'],
-            'email' => $this->editForm['email'],
-            'phone' => $this->editForm['phone'],
+            'name'                 => $this->editForm['name'],
+            'email'                => $this->editForm['email'],
+            'phone'                => $this->editForm['phone'],
+            'notify_on_submission' => $this->editForm['notify_on_submission'],
             ...($this->editForm['password'] ? ['password' => Hash::make($this->editForm['password'])] : []),
         ]);
 
         $user->syncRoles([$this->editForm['role']]);
 
         $this->editingUserId = null;
-        $this->editForm = ['name' => '', 'email' => '', 'phone' => '', 'role' => '', 'password' => ''];
+        $this->editForm = ['name' => '', 'email' => '', 'phone' => '', 'role' => '', 'password' => '', 'notify_on_submission' => true];
         $this->modal('edit-user')->close();
         $this->dispatch('notify', message: 'User updated successfully.');
     }

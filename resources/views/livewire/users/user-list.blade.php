@@ -133,6 +133,10 @@
                 </flux:select>
                 <flux:input wire:model="editForm.password" label="New Password" type="password" placeholder="Leave blank to keep current" viewable />
 
+                @if ($editForm['role'] === 'pic')
+                <flux:switch wire:model="editForm.notify_on_submission" label="Email Notifications" description="Receive email when a client submits a claim" />
+                @endif
+
                 <div class="flex gap-2 justify-end">
                     <flux:modal.close>
                         <flux:button variant="ghost">Cancel</flux:button>

@@ -8,6 +8,7 @@ use App\Livewire\Payments\PaymentList;
 use App\Livewire\Settings\UserSettings;
 use App\Livewire\Users\UserList;
 use App\Livewire\Roles\RoleList;
+use App\Http\Controllers\FclFormController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -27,6 +28,12 @@ Route::middleware(['auth'])->group(function () {
 
     // Users (Admin)
     Route::get('/pengguna', UserList::class)->name('users.index')->middleware('can:users.manage');
+
+    // FCL Form PDF download
+    Route::post('/tuntutan/fcl-form/download', [FclFormController::class, 'download'])->name('claims.fcl.download');
+
+    // FCL Form preview with pre-filled test data (styling only)
+    Route::get('/tuntutan/fcl-form/preview', [FclFormController::class, 'preview'])->name('claims.fcl.preview');
 
     // Roles & Permissions (Admin only)
     Route::get('/peranan', RoleList::class)->name('roles.index')->middleware('role:admin');

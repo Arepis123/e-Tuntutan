@@ -23,6 +23,7 @@ class User extends Authenticatable
         'phone',
         'company_name',
         'external_id',
+        'notify_on_submission',
     ];
 
     public function claims(): HasMany

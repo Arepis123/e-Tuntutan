@@ -39,13 +39,37 @@ class ClaimCreate extends Component
     public ?array $foundWorker = null;
     public bool $workerNotFound = false;
 
-    // Step 3: Incident details
+    // Step 2: Section I fields e, g, h (not in worker DB)
+    public string $dateOfEmployment = '';
+    public string $workingHourFrom = '';
+    public string $workingHourTo = '';
+    public string $facilityMeals = '';
+    public string $facilityAccommodation = '';
+    public string $facilityTransportation = '';
+    public string $tinNo = '';
+    public string $sstNo = '';
+
+    // Step 3: Incident details — common
     public string $incidentType = '';
     public string $incidentDate = '';
     public string $incidentDescription = '';
     public string $hospitalName = '';
     public string $admissionDate = '';
     public string $dischargeDate = '';
+    public string $insurancePolicyNo = '';
+
+    // Step 3: Accident-specific (FCL Accident Form Section II)
+    public string $incidentTime = '';
+    public string $incidentLocation = '';
+    public array  $injuryTypes = [];
+    public string $injuryTypeOther = '';
+    public string $injuryDescription = '';
+
+    // Step 3: Non-accident-specific (FCL Non-Accident Form Section II)
+    public string $diseaseType = '';
+    public string $isHistoricalDisease = '';
+    public string $isWorkRelated = '';
+    public string $workRelatedDescription = '';
 
     // Step 4: Documents
     public array $uploadedFiles = [];
@@ -62,6 +86,34 @@ class ClaimCreate extends Component
 
         if ($this->claimCategory === 'hospitalization') {
             $rules['hospitalName']  = 'required|string|max:255';
+            $rules['admissionDate'] = 'required|date';
+        }
+
+        return $rules;
+    }
+
+    protected function step3Rules(): array
+    {
+        $rules = [
+            'incidentType'        => 'required|in:accident,non_accident',
+            'incidentDate'        => 'required|date',
+            'incidentDescription' => 'required|min:10',
+        ];
+
+        if ($this->incidentType === 'accident') {
+            $rules['incidentTime']     = 'required';
+            $rules['incidentLocation'] = 'required|string';
+            $rules['injuryTypes']      = 'required|array|min:1';
+            $rules['injuryDescription'] = 'required|min:5';
+        }
+
+        if ($this->incidentType === 'non_accident') {
+            $rules['diseaseType']         = 'required|string';
+            $rules['isHistoricalDisease'] = 'required|in:0,1';
+            $rules['isWorkRelated']       = 'required|in:0,1';
+        }
+
+        if ($this->claimCategory === 'hospitalization') {
             $rules['admissionDate'] = 'required|date';
         }
 
@@ -146,11 +198,7 @@ class ClaimCreate extends Component
                         $this->claimType === 'fwhs' ? 'in:hospitalization' : 'in:hospitalization,death',
                     ],
                 ]),
-                3 => $this->validate([
-                    'incidentType'        => 'required|in:accident,non_accident',
-                    'incidentDate'        => 'required|date',
-                    'incidentDescription' => 'required|min:10',
-                ]),
+                3 => $this->validate($this->step3Rules()),
                 default => null,
             };
         }
@@ -203,18 +251,36 @@ class ClaimCreate extends Component
             );
 
             $claim = Claim::create([
-                'worker_id'           => $worker->id,
-                'user_id'             => Auth::id(),
-                'claim_type'          => $this->claimType,
-                'claim_category'      => $this->claimCategory,
-                'incident_type'       => $this->incidentType,
-                'status'              => 'open',
-                'incident_date'       => $this->incidentDate,
-                'incident_description' => $this->incidentDescription,
-                'hospital_name'       => $this->hospitalName ?? null,
-                'admission_date'      => $this->admissionDate ?? null,
-                'discharge_date'      => $this->dischargeDate ?? null,
-                'submitted_at'        => now(),
+                'worker_id'              => $worker->id,
+                'user_id'                => Auth::id(),
+                'claim_type'             => $this->claimType,
+                'claim_category'         => $this->claimCategory,
+                'incident_type'          => $this->incidentType,
+                'status'                 => 'open',
+                'incident_date'          => $this->incidentDate,
+                'incident_time'          => $this->incidentTime ?: null,
+                'incident_location'      => $this->incidentLocation ?: null,
+                'incident_description'   => $this->incidentDescription,
+                'injury_types'           => $this->injuryTypes ? implode(',', $this->injuryTypes) : null,
+                'injury_type_other'      => $this->injuryTypeOther ?: null,
+                'injury_description'     => $this->injuryDescription ?: null,
+                'disease_type'           => $this->diseaseType ?: null,
+                'is_historical_disease'  => $this->isHistoricalDisease !== '' ? (bool) $this->isHistoricalDisease : null,
+                'is_work_related'        => $this->isWorkRelated !== '' ? (bool) $this->isWorkRelated : null,
+                'work_related_description' => $this->workRelatedDescription ?: null,
+                'hospital_name'          => $this->hospitalName ?: null,
+                'admission_date'         => $this->admissionDate ?: null,
+                'discharge_date'         => $this->dischargeDate ?: null,
+                'insurance_policy_no'    => $this->insurancePolicyNo ?: null,
+                'tin_no'                 => $this->tinNo ?: null,
+                'sst_no'                 => $this->sstNo ?: null,
+                'date_of_employment'     => $this->dateOfEmployment ?: null,
+                'working_hour_from'      => $this->workingHourFrom ?: null,
+                'working_hour_to'        => $this->workingHourTo ?: null,
+                'facility_meals'         => $this->facilityMeals !== '' ? (bool) $this->facilityMeals : null,
+                'facility_accommodation' => $this->facilityAccommodation !== '' ? (bool) $this->facilityAccommodation : null,
+                'facility_transportation' => $this->facilityTransportation !== '' ? (bool) $this->facilityTransportation : null,
+                'submitted_at'           => now(),
             ]);
 
             // Pre-create document records for tracking physical receipt
@@ -226,7 +292,7 @@ class ClaimCreate extends Component
             }
 
             // Notify PICs
-            $pics = \App\Models\User::role('pic')->get();
+            $pics = \App\Models\User::role('pic')->where('notify_on_submission', true)->get();
             Notification::send($pics, new ClaimSubmittedNotification($claim));
         });
 
@@ -249,20 +315,30 @@ class ClaimCreate extends Component
 
         if ($this->claimCategory === 'hospitalization') {
             if ($this->incidentType === 'accident') {
-                return [
+                $docs = [
                     'accident_fcl'    => 'Accident FCL Form',
                     'original_receipt' => 'Original Receipt',
                     'discharge_note'  => 'Discharge Note',
                     'doctor_letter'   => "Doctor's Letter",
                 ];
+                if ($this->claimType === 'fwhs') {
+                    $docs['fwhs_medical_form'] = 'FWHS Reimbursement Medical Form';
+                    $docs['fwhs_checklist']    = 'Checklist Tuntutan Insuran FWHS';
+                }
+                return $docs;
             }
             if ($this->incidentType === 'non_accident') {
-                return [
+                $docs = [
                     'non_accident_fcl' => 'Non-Accident FCL Form',
                     'original_receipt' => 'Original Receipt',
                     'discharge_note'   => 'Discharge Note',
                     'doctor_letter'    => "Doctor's Letter",
                 ];
+                if ($this->claimType === 'fwhs') {
+                    $docs['fwhs_medical_form'] = 'FWHS Reimbursement Medical Form';
+                    $docs['fwhs_checklist']    = 'Checklist Tuntutan Insuran FWHS';
+                }
+                return $docs;
             }
             return [];
         }

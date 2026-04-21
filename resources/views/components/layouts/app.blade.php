@@ -33,7 +33,7 @@
         <flux:sidebar.item
             icon="document-text"
             href="{{ route('claims.index') }}"
-            :current="request()->routeIs('claims.*')"
+            :current="request()->routeIs('claims.*') && !request()->routeIs('claims.create')"
             wire:navigate
         >
             Claims
