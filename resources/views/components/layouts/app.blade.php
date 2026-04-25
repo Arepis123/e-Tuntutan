@@ -75,6 +75,15 @@
 
         @role('admin')
         <flux:sidebar.item
+            icon="cog-6-tooth"
+            href="{{ route('configuration.index') }}"
+            :current="request()->routeIs('configuration.*')"
+            wire:navigate
+        >
+            Configuration
+        </flux:sidebar.item>
+
+        <flux:sidebar.item
             icon="shield-check"
             href="{{ route('roles.index') }}"
             :current="request()->routeIs('roles.*')"

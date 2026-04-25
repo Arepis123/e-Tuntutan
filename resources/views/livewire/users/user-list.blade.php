@@ -13,7 +13,7 @@
 
     {{-- Stats --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <flux:card class="p-5 flex items-center gap-4">
+        <flux:card class="p-5 flex items-center gap-4 dark:bg-zinc-900">
             <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/30">
                 <flux:icon.users class="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
@@ -23,7 +23,7 @@
             </div>
         </flux:card>
 
-        <flux:card class="p-5 flex items-center gap-4">
+        <flux:card class="p-5 flex items-center gap-4 dark:bg-zinc-900">
             <div class="p-3 rounded-xl bg-purple-50 dark:bg-purple-900/30">
                 <flux:icon.identification class="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
@@ -33,7 +33,7 @@
             </div>
         </flux:card>
 
-        <flux:card class="p-5 flex items-center gap-4">
+        <flux:card class="p-5 flex items-center gap-4 dark:bg-zinc-900">
             <div class="p-3 rounded-xl bg-green-50 dark:bg-green-900/30">
                 <flux:icon.building-office class="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>

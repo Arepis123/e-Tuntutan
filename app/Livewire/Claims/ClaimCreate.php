@@ -48,6 +48,9 @@ class ClaimCreate extends Component
     public string $facilityTransportation = '';
     public string $tinNo = '';
     public string $sstNo = '';
+    public string $companyPicName = '';
+    public string $companyPicPhone = '';
+    public string $companyPicEmail = '';
 
     // Step 3: Incident details — common
     public string $incidentType = '';
@@ -127,7 +130,9 @@ class ClaimCreate extends Component
         $this->foundWorker = null;
         $this->workerNotFound = false;
 
-        $worker = \DB::connection('worker_db')
+        $user = Auth::user();
+
+        $query = \DB::connection('worker_db')
             ->table('workers')
             ->leftJoin('mst_countries', 'workers.wkr_country', '=', 'mst_countries.cty_id')
             ->leftJoin('contractors', 'workers.wkr_currentemp', '=', 'contractors.ctr_clab_no')
@@ -142,8 +147,14 @@ class ClaimCreate extends Component
                 'contractors.ctr_pcode as contractor_pcode',
                 'mst_states.state_name as contractor_state'
             )
-            ->where('wkr_passno', $this->passportNumber)
-            ->first();
+            ->where('wkr_passno', $this->passportNumber);
+
+        // Employers can only look up their own workers
+        if ($user->hasRole('employer') && $user->username) {
+            $query->where('workers.wkr_currentemp', $user->username);
+        }
+
+        $worker = $query->first();
 
         if (! $worker) {
             $this->workerNotFound = true;
@@ -274,6 +285,9 @@ class ClaimCreate extends Component
                 'insurance_policy_no'    => $this->insurancePolicyNo ?: null,
                 'tin_no'                 => $this->tinNo ?: null,
                 'sst_no'                 => $this->sstNo ?: null,
+                'company_pic_name'       => $this->companyPicName ?: null,
+                'company_pic_phone'      => $this->companyPicPhone ?: null,
+                'company_pic_email'      => $this->companyPicEmail ?: null,
                 'date_of_employment'     => $this->dateOfEmployment ?: null,
                 'working_hour_from'      => $this->workingHourFrom ?: null,
                 'working_hour_to'        => $this->workingHourTo ?: null,
@@ -283,10 +297,10 @@ class ClaimCreate extends Component
                 'submitted_at'           => now(),
             ]);
 
-            // Pre-create document records for tracking physical receipt
-            foreach (array_keys($this->getRequiredDocuments()) as $docType) {
+            // Pre-create document records for tracking (only is_required docs, skip download-only)
+            foreach ($this->getDocumentConfigs()->where('is_required', true) as $config) {
                 $claim->documents()->create([
-                    'document_type' => $docType,
+                    'document_type' => $config->document_type,
                     'is_received'   => false,
                 ]);
             }
@@ -302,55 +316,29 @@ class ClaimCreate extends Component
 
     public function render()
     {
-        $requiredDocs = $this->getRequiredDocuments();
+        $configs          = $this->getDocumentConfigs();
+        $requiredDocs     = $configs->where('is_required', true);
+        $downloadableDocs = $configs->where('is_downloadable', true);
 
-        return view('livewire.claims.claim-create', compact('requiredDocs'));
+        return view('livewire.claims.claim-create', compact('requiredDocs', 'downloadableDocs'));
     }
 
-    protected function getRequiredDocuments(): array
+    protected function getDocumentConfigs(): \Illuminate\Database\Eloquent\Collection
     {
-        if (! $this->claimCategory) {
-            return [];
+        if (! $this->claimType || ! $this->claimCategory) {
+            return collect();
         }
 
-        if ($this->claimCategory === 'hospitalization') {
-            if ($this->incidentType === 'accident') {
-                $docs = [
-                    'accident_fcl'    => 'Accident FCL Form',
-                    'original_receipt' => 'Original Receipt',
-                    'discharge_note'  => 'Discharge Note',
-                    'doctor_letter'   => "Doctor's Letter",
-                ];
-                if ($this->claimType === 'fwhs') {
-                    $docs['fwhs_medical_form'] = 'FWHS Reimbursement Medical Form';
-                    $docs['fwhs_checklist']    = 'Checklist Tuntutan Insuran FWHS';
-                }
-                return $docs;
-            }
-            if ($this->incidentType === 'non_accident') {
-                $docs = [
-                    'non_accident_fcl' => 'Non-Accident FCL Form',
-                    'original_receipt' => 'Original Receipt',
-                    'discharge_note'   => 'Discharge Note',
-                    'doctor_letter'    => "Doctor's Letter",
-                ];
-                if ($this->claimType === 'fwhs') {
-                    $docs['fwhs_medical_form'] = 'FWHS Reimbursement Medical Form';
-                    $docs['fwhs_checklist']    = 'Checklist Tuntutan Insuran FWHS';
-                }
-                return $docs;
-            }
-            return [];
+        $incidentType = $this->claimCategory === 'death' ? null : ($this->incidentType ?: null);
+
+        if ($this->claimCategory === 'hospitalization' && ! $incidentType) {
+            return collect();
         }
 
-        return match ($this->claimCategory) {
-            'death' => [
-                'death_cert'    => 'Death Certificate',
-                'body_receipt'  => 'Body Delivery Receipt',
-                'police_report' => 'Police Report',
-                'embassy_letter' => 'Embassy Letter',
-            ],
-            default => [],
-        };
+        return \App\Models\DocumentConfig::where('claim_type', $this->claimType)
+            ->where('claim_category', $this->claimCategory)
+            ->where('incident_type', $incidentType)
+            ->orderBy('sort_order')
+            ->get();
     }
 }

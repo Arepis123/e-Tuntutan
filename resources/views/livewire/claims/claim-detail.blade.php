@@ -39,66 +39,66 @@
         <div class="lg:col-span-2 space-y-6">
 
             {{-- Worker Info --}}
-            <div class="bg-white rounded-xl border border-zinc-200 p-6">
+            <flux:card class="dark:bg-zinc-900">
                 <flux:heading size="lg" class="mb-4">Worker Information</flux:heading>
                 <dl class="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                        <dt class="text-zinc-500">Name</dt>
-                        <dd class="font-medium text-zinc-900 mt-1">{{ $claim->worker->name }}</dd>
+                        <dt class="text-zinc-500 dark:text-zinc-400">Name</dt>
+                        <dd class="font-medium text-zinc-900 dark:text-white mt-1">{{ $claim->worker->name }}</dd>
                     </div>
                     <div>
-                        <dt class="text-zinc-500">Passport No.</dt>
-                        <dd class="font-medium font-mono mt-1">{{ $claim->worker->passport_number }}</dd>
+                        <dt class="text-zinc-500 dark:text-zinc-400">Passport No.</dt>
+                        <dd class="font-medium text-zinc-900 dark:text-white mt-1">{{ $claim->worker->passport_number }}</dd>
                     </div>
                     <div>
-                        <dt class="text-zinc-500">Nationality</dt>
-                        <dd class="mt-1">{{ $claim->worker->nationality }}</dd>
+                        <dt class="text-zinc-500 dark:text-zinc-400">Nationality</dt>
+                        <dd class="mt-1 dark:text-zinc-300">{{ $claim->worker->nationality }}</dd>
                     </div>
                     <div>
-                        <dt class="text-zinc-500">Worker Type</dt>
+                        <dt class="text-zinc-500 dark:text-zinc-400">Worker Type</dt>
                         <dd class="mt-1">
-                            <flux:badge color="zinc" size="sm">{{ ucfirst($claim->worker->worker_type) }}</flux:badge>
+                            <flux:badge color="{{ $claim->worker->worker_type === 'outsource' ? 'amber' : 'fuchsia' }}" size="sm">{{ ucfirst($claim->worker->worker_type) }}</flux:badge>
                         </dd>
                     </div>
                 </dl>
-            </div>
+            </flux:card>
 
             {{-- Incident Details --}}
-            <div class="bg-white rounded-xl border border-zinc-200 p-6">
+            <flux:card class="dark:bg-zinc-900">
                 <flux:heading size="lg" class="mb-4">Incident Details</flux:heading>
                 <dl class="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                        <dt class="text-zinc-500">Incident Date</dt>
-                        <dd class="mt-1">{{ $claim->incident_date?->format('d/m/Y') }}</dd>
+                        <dt class="text-zinc-500 dark:text-zinc-400">Incident Date</dt>
+                        <dd class="mt-1 dark:text-zinc-300">{{ $claim->incident_date?->format('d/m/Y') }}</dd>
                     </div>
                     @if ($claim->hospital_name)
                     <div>
-                        <dt class="text-zinc-500">Hospital Name</dt>
-                        <dd class="mt-1">{{ $claim->hospital_name }}</dd>
+                        <dt class="text-zinc-500 dark:text-zinc-400">Hospital Name</dt>
+                        <dd class="mt-1 dark:text-zinc-300">{{ $claim->hospital_name }}</dd>
                     </div>
                     <div>
-                        <dt class="text-zinc-500">Admission Date</dt>
-                        <dd class="mt-1">{{ $claim->admission_date?->format('d/m/Y') }}</dd>
+                        <dt class="text-zinc-500 dark:text-zinc-400">Admission Date</dt>
+                        <dd class="mt-1 dark:text-zinc-300">{{ $claim->admission_date?->format('d/m/Y') }}</dd>
                     </div>
                     <div>
-                        <dt class="text-zinc-500">Discharge Date</dt>
-                        <dd class="mt-1">{{ $claim->discharge_date?->format('d/m/Y') ?? '—' }}</dd>
+                        <dt class="text-zinc-500 dark:text-zinc-400">Discharge Date</dt>
+                        <dd class="mt-1 dark:text-zinc-300">{{ $claim->discharge_date?->format('d/m/Y') ?? '—' }}</dd>
                     </div>
                     @endif
                     <div class="col-span-2">
-                        <dt class="text-zinc-500">Description</dt>
-                        <dd class="mt-1">{{ $claim->incident_description }}</dd>
+                        <dt class="text-zinc-500 dark:text-zinc-400">Description</dt>
+                        <dd class="mt-1 dark:text-zinc-300">{{ $claim->incident_description }}</dd>
                     </div>
                     @if ($claim->forwarded_to)
                     <div>
-                        <dt class="text-zinc-500">Forwarded To</dt>
+                        <dt class="text-zinc-500 dark:text-zinc-400">Forwarded To</dt>
                         <dd class="mt-1">
                             <flux:badge color="blue" size="sm">{{ strtoupper(str_replace('_', ' ', $claim->forwarded_to)) }}</flux:badge>
                         </dd>
                     </div>
                     @endif
                 </dl>
-            </div>
+            </flux:card>
 
             {{-- Documents --}}
             <flux:card class="dark:bg-zinc-900">
@@ -106,6 +106,39 @@
                 <flux:text class="mb-4 text-sm">Mark each document as received when the physical copy arrives.</flux:text>
 
                 @if ($claim->documents->count() > 0)
+                @php $allReceived = $claim->documents->every(fn($d) => $d->is_received); @endphp
+                @if ($allReceived)
+                <flux:accordion transition>
+                    <flux:accordion.item>
+                        <flux:accordion.heading>
+                            <div class="flex items-center gap-2">
+                                <flux:icon.check-circle class="w-4 h-4 text-green-500" />
+                                <span>All {{ $claim->documents->count() }} documents received</span>
+                                <flux:text class="text-xs text-zinc-400 dark:text-zinc-500 ml-1">· Click to view</flux:text>
+                            </div>
+                        </flux:accordion.heading>
+                        <flux:accordion.content>
+                            <div class="space-y-3 pt-2">
+                                @foreach ($claim->documents as $doc)
+                                <div class="flex items-center justify-between p-3 rounded-lg border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                                    <div class="flex items-center gap-3">
+                                        <flux:icon.check-circle class="w-5 h-5 text-green-500 shrink-0" />
+                                        <div>
+                                            <p class="text-sm font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->getDocumentTypeLabel() }}</p>
+                                            <p class="text-xs text-green-600 dark:text-green-400">
+                                                Received on {{ $doc->received_at->format('d/m/Y H:i') }}
+                                                @if($doc->receiver) by {{ $doc->receiver->name }} @endif
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <flux:badge color="green" size="sm">Received</flux:badge>
+                                </div>
+                                @endforeach
+                            </div>
+                        </flux:accordion.content>
+                    </flux:accordion.item>
+                </flux:accordion>
+                @else
                 <div class="space-y-3">
                     @foreach ($claim->documents as $doc)
                     <div class="flex items-center justify-between p-3 rounded-lg border
@@ -134,7 +167,6 @@
                         @can('claims.approve')
                         <flux:button
                             wire:click="markDocumentReceived({{ $doc->id }})"
-                            wire:confirm="Mark '{{ $doc->getDocumentTypeLabel() }}' as received?"
                             size="sm"
                             variant="ghost"
                             icon="check"
@@ -148,21 +180,22 @@
                     </div>
                     @endforeach
                 </div>
+                @endif
                 @else
                 <p class="text-sm text-zinc-400">No documents tracked yet.</p>
                 @endif
             </flux:card>
 
             {{-- Notes --}}
-            <div class="bg-white rounded-xl border border-zinc-200 p-6">
+            <flux:card class="dark:bg-zinc-900">
                 <flux:heading size="lg" class="mb-4">Notes</flux:heading>
 
                 <div class="space-y-3 mb-4">
                     @forelse ($claim->claimNotes->sortByDesc('created_at') as $note)
                     @if (!$note->is_internal || auth()->user()->hasAnyRole(['admin','pic']))
-                    <div class="p-3 rounded-lg {{ $note->is_internal ? 'bg-yellow-50 border border-yellow-200' : 'bg-zinc-50' }}">
+                    <div class="p-3 rounded-lg {{ $note->is_internal ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800' : 'bg-zinc-50 dark:bg-zinc-800' }}">
                         <div class="flex items-center justify-between mb-1">
-                            <span class="text-sm font-medium">{{ $note->user->name }}</span>
+                            <span class="text-sm font-medium dark:text-white">{{ $note->user->name }}</span>
                             <div class="flex items-center gap-2">
                                 @if ($note->is_internal)
                                 <flux:badge color="yellow" size="sm">Internal</flux:badge>
@@ -170,7 +203,7 @@
                                 <span class="text-xs text-zinc-400">{{ $note->created_at->diffForHumans() }}</span>
                             </div>
                         </div>
-                        <p class="text-sm text-zinc-700">{{ $note->note }}</p>
+                        <p class="text-sm text-zinc-700 dark:text-zinc-300">{{ $note->note }}</p>
                     </div>
                     @endif
                     @empty
@@ -178,63 +211,96 @@
                     @endforelse
                 </div>
 
-                <div class="border-t border-zinc-200 pt-4">
+                <div class="border-t border-zinc-200 dark:border-zinc-700 pt-4">
                     <flux:textarea wire:model="newNote" placeholder="Add a note..." rows="3" class="mb-3" />
                     @if (auth()->user()->hasAnyRole(['admin','pic']))
                     <div class="flex items-center gap-2 mb-3">
                         <flux:checkbox wire:model="noteIsInternal" id="internal" />
-                        <label for="internal" class="text-sm text-zinc-600">Internal note only</label>
+                        <label for="internal" class="text-sm text-zinc-600 dark:text-zinc-400">Internal note only</label>
                     </div>
                     @endif
                     <flux:button wire:click="addNote" size="sm" icon="chat-bubble-left">Add Note</flux:button>
                 </div>
-            </div>
+            </flux:card>
         </div>
 
         {{-- Sidebar --}}
         <div class="space-y-6">
             {{-- Status Timeline --}}
-            <div class="bg-white rounded-xl border border-zinc-200 p-6">
+            <flux:card class="dark:bg-zinc-900">
                 <flux:heading size="lg" class="mb-4">Timeline</flux:heading>
-                <ol class="relative border-l border-zinc-200 space-y-4 ml-3">
-                    <li class="ml-4">
-                        <div class="absolute w-3 h-3 bg-zinc-200 rounded-full -left-1.5 border border-white"></div>
-                        <p class="text-sm font-medium">Submitted</p>
-                        <p class="text-xs text-zinc-400">{{ $claim->submitted_at?->format('d/m/Y') ?? $claim->created_at->format('d/m/Y') }}</p>
-                    </li>
+                <flux:timeline>
+                    <flux:timeline.item>
+                        <flux:timeline.indicator>
+                            <flux:icon.paper-airplane variant="micro" />
+                        </flux:timeline.indicator>
+                        <flux:timeline.content>
+                            <flux:heading>Submitted <flux:text inline>· {{ $claim->submitted_at?->format('d/m/Y') ?? $claim->created_at->format('d/m/Y') }}</flux:text></flux:heading>
+                        </flux:timeline.content>
+                    </flux:timeline.item>
+
                     @if ($claim->approved_at)
-                    <li class="ml-4">
-                        <div class="absolute w-3 h-3 bg-green-400 rounded-full -left-1.5 border border-white"></div>
-                        <p class="text-sm font-medium">Approved</p>
-                        <p class="text-xs text-zinc-400">{{ $claim->approved_at->format('d/m/Y') }}</p>
-                    </li>
+                    <flux:timeline.item>
+                        <flux:timeline.indicator color="green">
+                            <flux:icon.check variant="micro" />
+                        </flux:timeline.indicator>
+                        <flux:timeline.content>
+                            <flux:heading>Approved <flux:text inline>· {{ $claim->approved_at->format('d/m/Y') }}</flux:text></flux:heading>
+                        </flux:timeline.content>
+                    </flux:timeline.item>
                     @endif
+
                     @if ($claim->rejected_at)
-                    <li class="ml-4">
-                        <div class="absolute w-3 h-3 bg-red-400 rounded-full -left-1.5 border border-white"></div>
-                        <p class="text-sm font-medium">Rejected</p>
-                        <p class="text-xs text-zinc-400">{{ $claim->rejected_at->format('d/m/Y') }}</p>
-                    </li>
+                    <flux:timeline.item>
+                        <flux:timeline.indicator color="red">
+                            <flux:icon.x-mark variant="micro" />
+                        </flux:timeline.indicator>
+                        <flux:timeline.content>
+                            <flux:heading>Rejected <flux:text inline>· {{ $claim->rejected_at->format('d/m/Y') }}</flux:text></flux:heading>
+                            @if ($claim->rejection_reason)
+                            <flux:text class="text-xs mt-0.5">{{ $claim->rejection_reason }}</flux:text>
+                            @endif
+                        </flux:timeline.content>
+                    </flux:timeline.item>
                     @endif
+
                     @if ($claim->closed_at)
-                    <li class="ml-4">
-                        <div class="absolute w-3 h-3 bg-blue-400 rounded-full -left-1.5 border border-white"></div>
-                        <p class="text-sm font-medium">Case Closed</p>
-                        <p class="text-xs text-zinc-400">{{ $claim->closed_at->format('d/m/Y') }}</p>
-                    </li>
+                    <flux:timeline.item>
+                        <flux:timeline.indicator color="blue">
+                            <flux:icon.archive-box variant="micro" />
+                        </flux:timeline.indicator>
+                        <flux:timeline.content>
+                            <flux:heading>Case Closed <flux:text inline>· {{ $claim->closed_at->format('d/m/Y') }}</flux:text></flux:heading>
+                        </flux:timeline.content>
+                    </flux:timeline.item>
                     @endif
-                </ol>
-            </div>
+                </flux:timeline>
+            </flux:card>
 
             {{-- Submitted By --}}
-            <div class="bg-white rounded-xl border border-zinc-200 p-6">
+            <flux:card class="dark:bg-zinc-900">
                 <flux:heading size="lg" class="mb-4">Submitted By</flux:heading>
-                <p class="font-medium">{{ $claim->user->name }}</p>
-                <p class="text-sm text-zinc-500">{{ $claim->user->email }}</p>
+                <p class="font-medium dark:text-white">{{ $claim->user->name }}</p>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $claim->user->email }}</p>
                 @if ($claim->user->company_name)
-                <p class="text-sm text-zinc-500">{{ $claim->user->company_name }}</p>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $claim->user->company_name }}</p>
                 @endif
-            </div>
+
+                @if ($claim->company_pic_name || $claim->company_pic_phone || $claim->company_pic_email)
+                <div class="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">Person In Charge</p>
+                    @if ($claim->company_pic_name)
+                    <p class="font-medium dark:text-white text-sm">{{ $claim->company_pic_name }}</p>
+                    @endif
+                    @if ($claim->company_pic_phone)
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $claim->company_pic_phone }}</p>
+                    @endif
+                    @if ($claim->company_pic_email)
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $claim->company_pic_email }}</p>
+                    @endif
+                </div>
+                @endif
+            </flux:card>
         </div>
     </div>
 

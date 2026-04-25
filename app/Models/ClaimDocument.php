@@ -50,22 +50,7 @@ class ClaimDocument extends Model
 
     public function getDocumentTypeLabel(): string
     {
-        return match ($this->document_type) {
-            'accident_fcl'     => 'Accident FCL Form',
-            'non_accident_fcl' => 'Non-Accident FCL Form',
-            'original_receipt' => 'Original Receipt',
-            'discharge_note'  => 'Discharge Note',
-            'doctor_letter'   => "Doctor's Letter",
-            'death_cert'      => 'Death Certificate',
-            'body_receipt'    => 'Body Delivery Receipt',
-            'police_report'   => 'Police Report',
-            'embassy_letter'  => 'Embassy Letter',
-            'approval_letter' => 'Approval Letter',
-            'payment_slip'    => 'Payment Slip',
-            'passport_copy'   => 'Passport Copy',
-            'beneficiary_bank' => 'Beneficiary Bank Details',
-            'beneficiary_info' => 'Beneficiary Information',
-            default           => $this->document_type,
-        };
+        return DocumentConfig::where('document_type', $this->document_type)->value('label')
+            ?? ucwords(str_replace('_', ' ', $this->document_type));
     }
 }

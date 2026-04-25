@@ -34,6 +34,9 @@ class Claim extends Model
         'notes',
         'tin_no',
         'sst_no',
+        'company_pic_name',
+        'company_pic_phone',
+        'company_pic_email',
     ];
 
     protected $casts = [

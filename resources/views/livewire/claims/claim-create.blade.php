@@ -1,6 +1,6 @@
 <div>
     <div class="mb-6">
-        <flux:heading size="xl">Submit New Claim</flux:heading>
+        <flux:text class="text-2xl font-bold mb-2" variant="strong">Submit New Claim</flux:text>
         <flux:subheading>Complete the form in 4 steps</flux:subheading>
     </div>
 
@@ -149,7 +149,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
 
             {{-- Date of Employment --}}
-            <flux:date-picker wire:model="dateOfEmployment" label="Date of Employment" type="input"/>
+            <flux:date-picker locale="en-GB" wire:model="dateOfEmployment" with-today label="Date of Employment" type="input"/>
 
             {{-- Working Hours --}}
             <flux:field>
@@ -179,6 +179,14 @@
             <flux:input wire:model="tinNo" label="Tax Identification No. (TIN)" placeholder="e.g. C12345678900" />
             <flux:input wire:model="sstNo" label="SST No." placeholder="e.g. W10-1234-12345678" />
         </div>
+
+        {{-- Company PIC --}}
+        <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Person In Charge (Company)</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <flux:input wire:model="companyPicName" label="Name" placeholder="Full name" />
+            <flux:input wire:model="companyPicPhone" label="Phone Number" placeholder="e.g. 0123456789" />
+            <flux:input wire:model="companyPicEmail" label="Email" type="email" placeholder="e.g. pic@company.com" />
+        </div>
         @endif
         @endif
 
@@ -198,7 +206,7 @@
         {{-- SECTION II: Accident Details --}}
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Section II — Accident Details</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <flux:date-picker wire:model="incidentDate" label="Date of Accident" type="input" required />
+            <flux:date-picker locale="en-GB" wire:model="incidentDate" label="Date of Accident" with-today type="input" required />
             <flux:time-picker wire:model="incidentTime" label="Time of Accident" required />
             <flux:input wire:model="incidentLocation" label="Location of Accident & Full Address" class="sm:col-span-2" required />
             <flux:textarea wire:model="incidentDescription" label="Description of Accident" rows="3" class="sm:col-span-2" required />
@@ -233,7 +241,7 @@
         {{-- SECTION II: Non-Accident Details --}}
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Section II — Non-Accident Details</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <flux:input wire:model="incidentDate" label="Date of Illness" type="date" required />
+            <flux:date-picker locale="en-GB" wire:model="incidentDate" label="Date of Illness" with-today type="input" required />
             <flux:input wire:model="diseaseType" label="Type of Disease" placeholder="e.g. Pneumonia, Fever" required />
 
             <flux:field>
@@ -263,8 +271,8 @@
 
         @if ($claimCategory === 'hospitalization' && $incidentType)
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <flux:date-picker wire:model="admissionDate" label="Admission Date" type="input" required />
-            <flux:date-picker wire:model="dischargeDate" label="Discharge Date" type="input" />
+            <flux:date-picker locale="en-GB" wire:model="admissionDate" label="Admission Date" with-today type="input" required />
+            <flux:date-picker locale="en-GB" wire:model="dischargeDate" label="Discharge Date" with-today type="input" />
         </div>
         @endif
 
@@ -282,36 +290,31 @@
         <flux:text class="mb-6">Please download, complete, and send the following documents to our office by post or in person.</flux:text>
 
         {{-- Downloadable Forms --}}
-        @php $downloadableDocs = ['accident_fcl', 'non_accident_fcl', 'fwhs_medical_form', 'fwhs_checklist']; @endphp
+        @if ($downloadableDocs->isNotEmpty())
         <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">Form to Download & Complete</p>
         <div class="space-y-2 mb-6">
-            @foreach ($requiredDocs as $docType => $docLabel)
-            @if (in_array($docType, $downloadableDocs))
+            @foreach ($downloadableDocs as $doc)
             <div class="flex items-center justify-between border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                 <div class="flex items-center gap-3">
                     <div class="w-9 h-9 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
                         <flux:icon.arrow-down-tray class="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $docLabel }}</p>
-                        @if ($docType === 'fwhs_medical_form')
+                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->label }}</p>
+                        @if ($doc->document_type === 'fwhs_medical_form')
                         <p class="text-xs text-zinc-500 dark:text-zinc-400">To be completed by the attending doctor — bring this form to the hospital</p>
-                        @elseif ($docType === 'fwhs_checklist')
+                        @elseif ($doc->document_type === 'fwhs_checklist')
                         <p class="text-xs text-zinc-500 dark:text-zinc-400">Download, tick all items, and include with your submission</p>
                         @else
                         <p class="text-xs text-zinc-500 dark:text-zinc-400">Pre-filled with your details — complete Section III (Reporter) and sign before submitting</p>
                         @endif
                     </div>
                 </div>
-                @if ($docType === 'fwhs_medical_form')
-                <a href="{{ asset('attachments/FWHS REIMBURSEMENT MEDICAL FORM.pdf') }}" target="_blank" download>
+                @if ($doc->file_path && !in_array($doc->document_type, ['accident_fcl', 'non_accident_fcl']))
+                <a href="{{ str_starts_with($doc->file_path, 'documents/') ? asset('storage/' . $doc->file_path) : asset($doc->file_path) }}" target="_blank" download>
                     <flux:button size="sm" variant="filled" icon="arrow-down-tray">Download</flux:button>
                 </a>
-                @elseif ($docType === 'fwhs_checklist')
-                <a href="{{ asset('attachments/CHECKLIST FWHS.pdf') }}" target="_blank" download>
-                    <flux:button size="sm" variant="filled" icon="arrow-down-tray">Download</flux:button>
-                </a>
-                @else
+                @elseif (in_array($doc->document_type, ['accident_fcl', 'non_accident_fcl']))
                 <form method="POST" action="{{ route('claims.fcl.download') }}" target="_blank">
                     @csrf
                     <input type="hidden" name="incidentType" value="{{ $incidentType }}">
@@ -340,29 +343,32 @@
                     @endforeach
                     <flux:button type="submit" size="sm" variant="filled" icon="arrow-down-tray">Download</flux:button>
                 </form>
+                @else
+                <flux:button size="sm" variant="outline" icon="arrow-down-tray" disabled>No File</flux:button>
                 @endif
             </div>
-            @endif
             @endforeach
         </div>
+        @endif
 
         {{-- Original Supporting Documents --}}
+        @php $submitDocs = $requiredDocs->filter(fn($d) => !$downloadableDocs->contains('id', $d->id)); @endphp
+        @if ($submitDocs->isNotEmpty())
         <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">Original Documents to Submit</p>
         <div class="space-y-2 mb-6">
-            @foreach ($requiredDocs as $docType => $docLabel)
-            @if (!in_array($docType, $downloadableDocs))
+            @foreach ($submitDocs as $doc)
             <div class="flex items-center gap-3 border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
                 <div class="w-9 h-9 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
                     <flux:icon.document-text class="w-5 h-5 text-zinc-500 dark:text-zinc-400" />
                 </div>
                 <div>
-                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $docLabel }}</p>
+                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->label }}</p>
                     <p class="text-xs text-zinc-500 dark:text-zinc-400">Please submit the original copy</p>
                 </div>
             </div>
-            @endif
             @endforeach
         </div>
+        @endif
 
         {{-- Postal Address --}}
         <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">

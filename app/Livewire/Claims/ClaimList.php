@@ -44,6 +44,14 @@ class ClaimList extends Component
 
         $claims = $query->paginate(15);
 
-        return view('livewire.claims.claim-list', compact('claims'));
+        $baseQuery = Claim::when($user->hasRole('employer'), fn ($q) => $q->where('user_id', $user->id));
+        $stats = [
+            'total'       => (clone $baseQuery)->count(),
+            'open'        => (clone $baseQuery)->where('status', 'open')->count(),
+            'in_progress' => (clone $baseQuery)->where('status', 'in_progress')->count(),
+            'closed'      => (clone $baseQuery)->where('status', 'closed')->count(),
+        ];
+
+        return view('livewire.claims.claim-list', compact('claims', 'stats'));
     }
 }

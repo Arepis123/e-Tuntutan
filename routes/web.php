@@ -9,6 +9,7 @@ use App\Livewire\Settings\UserSettings;
 use App\Livewire\Users\UserList;
 use App\Livewire\Roles\RoleList;
 use App\Http\Controllers\FclFormController;
+use App\Livewire\Configuration\DocumentConfigPage;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -34,6 +35,9 @@ Route::middleware(['auth'])->group(function () {
 
     // FCL Form preview with pre-filled test data (styling only)
     Route::get('/tuntutan/fcl-form/preview', [FclFormController::class, 'preview'])->name('claims.fcl.preview');
+
+    // Configuration (Admin only)
+    Route::get('/konfigurasi', DocumentConfigPage::class)->name('configuration.index')->middleware('role:admin');
 
     // Roles & Permissions (Admin only)
     Route::get('/peranan', RoleList::class)->name('roles.index')->middleware('role:admin');
