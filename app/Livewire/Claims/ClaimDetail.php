@@ -27,6 +27,11 @@ class ClaimDetail extends Component
     public bool $showRejectModal = false;
     public bool $showForwardModal = false;
 
+    // Insurer decision
+    public $insurerApprovalLetter = null;
+    public string $insurerRejectionReason = '';
+    public $insurerRejectionAttachment = null;
+
     public $newDocument;
     public string $newDocumentType = '';
 
@@ -108,6 +113,106 @@ class ClaimDetail extends Component
         $this->claim->refresh();
     }
 
+    public function openInsurerApprovedModal(): void
+    {
+        $this->insurerApprovalLetter = null;
+        $this->modal('insurer-approved')->show();
+    }
+
+    public function openInsurerRejectedModal(): void
+    {
+        $this->insurerRejectionReason = '';
+        $this->insurerRejectionAttachment = null;
+        $this->modal('insurer-rejected')->show();
+    }
+
+    public function confirmInsurerApproved(): void
+    {
+        $this->validate([
+            'insurerApprovalLetter' => 'required|file|mimes:pdf|max:10240',
+        ]);
+
+        $path = $this->insurerApprovalLetter->store('insurer-letters', 'public');
+
+        $this->claim->update([
+            'insurer_decision'        => 'approved',
+            'insurer_decided_at'      => now(),
+            'insurer_decided_by'      => Auth::id(),
+            'insurer_approval_letter' => $path,
+        ]);
+
+        if ($this->claim->user) {
+            $this->claim->user->notify(new \App\Notifications\InsurerDecisionNotification($this->claim));
+        }
+
+        $this->claim->refresh();
+        $this->modal('insurer-approved')->close();
+        $this->dispatch('notify', message: 'Decision recorded and contractor notified.');
+    }
+
+    public function confirmInsurerRejected(): void
+    {
+        $this->validate([
+            'insurerRejectionReason'    => 'required|string|min:5',
+            'insurerRejectionAttachment' => 'nullable|file|mimes:pdf|max:10240',
+        ]);
+
+        $updates = [
+            'insurer_decision'         => 'rejected',
+            'insurer_decided_at'       => now(),
+            'insurer_decided_by'       => Auth::id(),
+            'insurer_rejection_reason' => $this->insurerRejectionReason,
+        ];
+
+        if ($this->insurerRejectionAttachment) {
+            $updates['insurer_rejection_attachment'] = $this->insurerRejectionAttachment->store('insurer-letters', 'public');
+        }
+
+        $this->claim->update($updates);
+
+        if ($this->claim->user) {
+            $this->claim->user->notify(new \App\Notifications\InsurerDecisionNotification($this->claim));
+        }
+
+        $this->claim->refresh();
+        $this->modal('insurer-rejected')->close();
+        $this->dispatch('notify', message: 'Decision recorded and contractor notified.');
+    }
+
+    public function openInsurerModal(): void
+    {
+        $this->modal('insurer-submission')->show();
+    }
+
+    public function confirmSubmittedToInsurer(bool $notifyContractor): void
+    {
+        $this->claim->update([
+            'submitted_to_insurer_at' => now(),
+            'submitted_to_insurer_by' => Auth::id(),
+        ]);
+
+        if ($notifyContractor && $this->claim->user) {
+            $this->claim->user->notify(
+                new \App\Notifications\ClaimSubmittedToInsurerNotification($this->claim)
+            );
+        }
+
+        $this->claim->refresh();
+        $this->modal('insurer-submission')->close();
+        $this->dispatch('notify', message: $notifyContractor
+            ? 'Recorded and notification sent to contractor.'
+            : 'Recorded. No notification sent.'
+        );
+    }
+
+    public function changeStatus(string $status): void
+    {
+        abort_unless(Auth::user()->hasAnyRole(['admin', 'pic']), 403);
+
+        $this->claim->update(['status' => $status]);
+        $this->claim->refresh();
+    }
+
     public function markDocumentReceived(int $documentId): void
     {
         $doc = $this->claim->documents()->findOrFail($documentId);
@@ -117,6 +222,19 @@ class ClaimDetail extends Component
             'received_at' => now(),
             'received_by' => Auth::id(),
         ]);
+
+        if ($this->claim->status === 'open') {
+            $this->claim->update(['status' => 'in_progress']);
+        }
+
+        $allReceived = $this->claim->documents()->where('is_received', false)->doesntExist();
+
+        if ($allReceived && ! $this->claim->documents_received_at) {
+            $this->claim->update([
+                'documents_received_at' => now(),
+                'documents_received_by' => Auth::id(),
+            ]);
+        }
 
         $this->claim->refresh();
     }

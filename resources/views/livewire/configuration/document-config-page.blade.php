@@ -1,14 +1,22 @@
 <div>
-    <div class="mb-6">
-        <flux:text class="text-2xl font-bold mb-2" variant="strong">Configuration</flux:text>
-        <flux:subheading>Manage required documents for each claim type</flux:subheading>
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <flux:text class="text-2xl font-bold mb-2" variant="strong">Configuration</flux:text>
+            <flux:subheading>Manage required documents for each claim type</flux:subheading>
+        </div>
+        <flux:button wire:click="openAddDocument" variant="primary" icon="plus">
+            Add Document
+        </flux:button>
     </div>
 
     {{-- Claim Type Tabs --}}
+    @php
+        $tabIcons = ['fwhs' => 'building-office-2', 'green_card' => 'credit-card', 'perkeso' => 'shield-check'];
+    @endphp
     <flux:tab.group>
         <flux:tabs wire:model.live="activeTab">
             @foreach ($claimTypes as $key => $label)
-            <flux:tab name="{{ $key }}">{{ $label }}</flux:tab>
+            <flux:tab name="{{ $key }}" icon="{{ $tabIcons[$key] ?? 'document' }}">{{ $label }}</flux:tab>
             @endforeach
         </flux:tabs>
 
@@ -35,6 +43,7 @@
                                     <th class="pb-3 font-medium text-zinc-500 dark:text-zinc-400 text-center w-28">Required</th>
                                     <th class="pb-3 font-medium text-zinc-500 dark:text-zinc-400 text-center w-28">Downloadable</th>
                                     <th class="pb-3 font-medium text-zinc-500 dark:text-zinc-400 w-64">File</th>
+                                    <th class="pb-3 w-10"></th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -57,7 +66,9 @@
                                         />
                                     </td>
                                     <td class="py-3">
-                                        @if ($doc->is_downloadable)
+                                        @if (in_array($doc->document_type, ['accident_fcl', 'non_accident_fcl']))
+                                            <span class="text-xs text-zinc-400 italic">Auto-generated</span>
+                                        @elseif ($doc->is_downloadable)
                                             @if ($doc->file_path)
                                             <div class="flex items-center gap-2">
                                                 <flux:icon.document-check class="w-4 h-4 text-green-500 shrink-0" />
@@ -95,6 +106,16 @@
                                             <span class="text-xs text-zinc-400">—</span>
                                         @endif
                                     </td>
+                                    <td class="py-3 text-right">
+                                        <flux:button
+                                            wire:click="deleteDocument({{ $doc->id }})"
+                                            wire:confirm="Delete this document? This cannot be undone."
+                                            size="xs"
+                                            variant="ghost"
+                                            icon="trash"
+                                            class="text-red-500 hover:text-red-600"
+                                        />
+                                    </td>
                                 </tr>
                                 @endforeach
                             </tbody>
@@ -109,7 +130,68 @@
         @endforeach
     </flux:tab.group>
 
-    {{-- Upload Modal --}}
+    {{-- Add Document Modal --}}
+    <flux:modal name="add-doc" class="max-w-lg">
+        <div class="p-6 space-y-4">
+            <flux:heading size="lg">Add Document</flux:heading>
+
+            <flux:field>
+                <flux:label>Document Label</flux:label>
+                <flux:input wire:model="newLabel" placeholder="e.g. Police Report" />
+                <flux:error name="newLabel" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Document Type <span class="text-zinc-400 font-normal">(lowercase, underscores only)</span></flux:label>
+                <flux:input wire:model="newDocumentType" placeholder="e.g. police_report" />
+                <flux:error name="newDocumentType" />
+            </flux:field>
+
+            <div class="grid grid-cols-2 gap-4">
+                <flux:field>
+                    <flux:label>Category</flux:label>
+                    <flux:select wire:model.live="newClaimCategory">
+                        <flux:select.option value="hospitalization">Hospitalization</flux:select.option>
+                        <flux:select.option value="death">Death</flux:select.option>
+                    </flux:select>
+                    <flux:error name="newClaimCategory" />
+                </flux:field>
+
+                @if ($newClaimCategory === 'hospitalization')
+                <flux:field>
+                    <flux:label>Incident Type</flux:label>
+                    <flux:select wire:model="newIncidentType">
+                        <flux:select.option value="accident">Accident</flux:select.option>
+                        <flux:select.option value="non_accident">Non-Accident</flux:select.option>
+                    </flux:select>
+                    <flux:error name="newIncidentType" />
+                </flux:field>
+                @endif
+            </div>
+
+            <div class="flex gap-6">
+                <flux:field variant="inline">
+                    <flux:checkbox wire:model="newIsRequired" />
+                    <flux:label>Required</flux:label>
+                </flux:field>
+                <flux:field variant="inline">
+                    <flux:checkbox wire:model="newIsDownloadable" />
+                    <flux:label>Downloadable</flux:label>
+                </flux:field>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">Cancel</flux:button>
+                </flux:modal.close>
+                <flux:button wire:click="saveDocument" variant="primary" icon="plus">
+                    Add
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Edit/Upload Modal --}}
     <flux:modal name="upload-doc" class="max-w-md">
         <div class="p-6 space-y-4">
             <flux:heading size="lg">Edit Document</flux:heading>
@@ -141,11 +223,7 @@
                 <flux:modal.close>
                     <flux:button variant="ghost">Cancel</flux:button>
                 </flux:modal.close>
-                <flux:button
-                    wire:click="saveUpload"
-                    variant="primary"
-                    icon="arrow-up-tray"
-                >
+                <flux:button wire:click="saveUpload" variant="primary" icon="arrow-up-tray">
                     Save
                 </flux:button>
             </div>

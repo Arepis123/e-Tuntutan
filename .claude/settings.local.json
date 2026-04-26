@@ -30,7 +30,8 @@
       "Bash(netstat -ano)",
       "Bash(findstr :8000)",
       "Bash(cmd:*)",
-      "Bash(findstr \":8000 \")"
+      "Bash(findstr \":8000 \")",
+      "Bash(php *)"
     ]
   }
 }

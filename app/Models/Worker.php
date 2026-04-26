@@ -13,9 +13,13 @@ class Worker extends Model
     protected $fillable = [
         'name',
         'passport_number',
+        'passport_expiry',
+        'permit_expiry',
         'nationality',
         'date_of_birth',
+        'gender',
         'worker_type',
+        'worker_status',
         'employer_name',
         'employer_address',
         'employer_ic',

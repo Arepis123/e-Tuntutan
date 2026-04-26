@@ -4,6 +4,7 @@ use App\Livewire\Dashboard;
 use App\Livewire\Claims\ClaimList;
 use App\Livewire\Claims\ClaimCreate;
 use App\Livewire\Claims\ClaimDetail;
+use App\Livewire\Claims\ClaimAppeal;
 use App\Livewire\Payments\PaymentList;
 use App\Livewire\Settings\UserSettings;
 use App\Livewire\Users\UserList;
@@ -23,6 +24,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/tuntutan', ClaimList::class)->name('claims.index');
     Route::get('/tuntutan/baru', ClaimCreate::class)->name('claims.create')->middleware('can:claims.create');
     Route::get('/tuntutan/{claim}', ClaimDetail::class)->name('claims.show');
+    Route::get('/tuntutan/{claim}/rayuan', ClaimAppeal::class)->name('claims.appeal');
 
     // Payments
     Route::get('/pembayaran', PaymentList::class)->name('payments.index')->middleware('can:payments.view');

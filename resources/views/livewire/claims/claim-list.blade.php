@@ -14,7 +14,7 @@
     {{-- Stats --}}
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <flux:card class="p-5 flex items-center gap-4 dark:bg-zinc-900">
-            <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/30">
+            <div class="hidden sm:block p-3 rounded-xl bg-blue-50 dark:bg-blue-900/30">
                 <flux:icon.document-text class="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
@@ -24,7 +24,7 @@
         </flux:card>
 
         <flux:card class="p-5 flex items-center gap-4 dark:bg-zinc-900">
-            <div class="p-3 rounded-xl bg-red-50 dark:bg-red-900/30">
+            <div class="hidden sm:block p-3 rounded-xl bg-red-50 dark:bg-red-900/30">
                 <flux:icon.exclamation-circle class="w-6 h-6 text-red-500 dark:text-red-400" />
             </div>
             <div>
@@ -34,7 +34,7 @@
         </flux:card>
 
         <flux:card class="p-5 flex items-center gap-4 dark:bg-zinc-900">
-            <div class="p-3 rounded-xl bg-yellow-50 dark:bg-yellow-900/30">
+            <div class="hidden sm:block p-3 rounded-xl bg-yellow-50 dark:bg-yellow-900/30">
                 <flux:icon.arrow-path class="w-6 h-6 text-yellow-500 dark:text-yellow-400" />
             </div>
             <div>
@@ -44,7 +44,7 @@
         </flux:card>
 
         <flux:card class="p-5 flex items-center gap-4 dark:bg-zinc-900">
-            <div class="p-3 rounded-xl bg-green-50 dark:bg-green-900/30">
+            <div class="hidden sm:block p-3 rounded-xl bg-green-50 dark:bg-green-900/30">
                 <flux:icon.check-circle class="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
             <div>

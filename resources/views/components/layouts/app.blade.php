@@ -107,10 +107,13 @@
         </flux:sidebar.item>
     </flux:sidebar.nav>
 
+    @php
+        $displayName = auth()->user()->company_name ?: auth()->user()->name;
+    @endphp
     <flux:dropdown position="top" align="start" class="max-lg:hidden">
         <flux:sidebar.profile
-            :name="auth()->user()->name"
-            :initials="strtoupper(substr(auth()->user()->name, 0, 2))"
+            :name="$displayName"
+            :initials="strtoupper(substr($displayName, 0, 2))"
         />
         <flux:menu>
             <flux:menu.item icon="user">My Profile</flux:menu.item>
@@ -132,8 +135,8 @@
     <flux:spacer />
     <flux:dropdown position="bottom" align="end">
         <flux:profile
-            :name="auth()->user()->name"
-            :initials="strtoupper(substr(auth()->user()->name, 0, 2))"
+            :name="Str::limit($displayName, 20)"
+            :initials="strtoupper(substr($displayName, 0, 2))"
         />
         <flux:menu>
             <flux:menu.item icon="user">My Profile</flux:menu.item>

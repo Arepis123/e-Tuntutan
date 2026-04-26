@@ -1,20 +1,25 @@
 <div>
     <div class="mb-6">
-        <flux:text class="text-2xl font-bold mb-2" variant="strong">Submit New Claim</flux:text>
-        <flux:subheading>Complete the form in 4 steps</flux:subheading>
+        <flux:text class="text-2xl font-bold mb-2" variant="strong">Appeal Claim</flux:text>
+        <flux:subheading>Review and update your claim details, then resubmit for reconsideration.</flux:subheading>
     </div>
+
+    {{-- Rejection Reason Card --}}
+    @if ($claim->insurer_rejection_reason)
+    <flux:card class="dark:bg-zinc-900 border border-red-300 dark:border-red-700 mb-6">
+        <div class="flex items-start gap-3">
+            <flux:icon.x-circle class="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <div>
+                <p class="font-semibold text-red-700 dark:text-red-400 mb-1">Rejection Reason from Insurer</p>
+                <p class="text-sm text-red-600 dark:text-red-400">{{ $claim->insurer_rejection_reason }}</p>
+            </div>
+        </div>
+    </flux:card>
+    @endif
 
     {{-- Step Indicator --}}
     <div class="mb-8">
         <flux:timeline horizontal>
-            <flux:timeline.item status="{{ $step > 1 ? 'complete' : ($step === 1 ? 'current' : 'incomplete') }}">
-                <flux:timeline.indicator>
-                    <flux:icon.tag variant="micro" />
-                </flux:timeline.indicator>
-                <flux:timeline.content class="{{ $step === 1 ? '' : 'hidden sm:block' }}">
-                    <flux:heading>Claim Type</flux:heading>
-                </flux:timeline.content>
-            </flux:timeline.item>
             <flux:timeline.item status="{{ $step > 2 ? 'complete' : ($step === 2 ? 'current' : 'incomplete') }}">
                 <flux:timeline.indicator>
                     <flux:icon.user variant="micro" />
@@ -43,65 +48,17 @@
     </div>
 
     <flux:card class="dark:bg-zinc-900 overflow-hidden">
-        <div
-            wire:key="step-{{ $step }}"
-            x-data="{ show: false }"
-            x-init="$nextTick(() => show = true)"
-            x-show="show"
-            @if ($direction === 'forward')
-            x-transition:enter="transition duration-500 ease-out"
-            x-transition:enter-start="opacity-0 translate-x-8"
-            x-transition:enter-end="opacity-100 translate-x-0"
-            @else
-            x-transition:enter="transition duration-500 ease-out"
-            x-transition:enter-start="opacity-0 -translate-x-8"
-            x-transition:enter-end="opacity-100 translate-x-0"
-            @endif
-        >
+        <div wire:key="step-{{ $step }}">
 
-        {{-- Step 1: Claim Type --}}
-        @if ($step === 1)
-        <flux:heading size="lg" class="mb-4">Step 1: Select Claim Type</flux:heading>
-
-        <flux:radio.group wire:model.live="claimType" label="Claim Type" variant="cards" :indicator="false" class="mb-6 max-sm:flex-col">
-            <flux:radio value="fwhs" icon="building-office-2" label="Insurance (FWHS)" description="Foreign Worker Hospitalization Scheme" />
-            <flux:radio value="green_card" icon="credit-card" label="Green Card" description="Construction industry insurance" />
-            <flux:radio value="perkeso" icon="shield-check" label="PERKESO" description="Social Security (SOCSO)" />
-        </flux:radio.group>
-
-        @error('claimType') <p class="text-red-500 dark:text-red-400 text-sm mb-4">{{ $message }}</p> @enderror
-
-        <flux:radio.group wire:model="claimCategory" label="Claim Category" variant="cards" :indicator="false" class="mb-6 max-sm:flex-col">
-            <flux:radio value="hospitalization" icon="building-office" label="Hospitalization" />
-            @if ($claimType !== 'fwhs')
-            <flux:radio value="death" icon="heart" label="Death" />
-            @endif
-        </flux:radio.group>
-
-        @error('claimCategory') <p class="text-red-500 dark:text-red-400 text-sm mb-4">{{ $message }}</p> @enderror
-        @endif
-
-        {{-- Step 2: Worker Info --}}
+        {{-- Step 2: Worker Info (read-only) --}}
         @if ($step === 2)
-        <flux:heading size="lg" class="mb-4">Step 2: Worker Information</flux:heading>
-
-        <div class="flex flex-col sm:flex-row gap-3 mb-2">
-            <flux:input wire:model="passportNumber" placeholder="Enter passport number" label="Passport Number" class="flex-1" />
-            <flux:button wire:click="lookupWorker" variant="filled" class="self-end w-full sm:w-auto">Search</flux:button>
-        </div>
-
-        @if ($workerNotFound)
-        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
-            <p class="font-semibold text-red-700 dark:text-red-400">Worker not found</p>
-            <p class="text-sm text-red-600 dark:text-red-400">No worker with passport number <strong>{{ $passportNumber }}</strong> was found in the system.</p>
-        </div>
-        @endif
+        <flux:heading size="lg" class="mb-4">Step 1: Worker Information</flux:heading>
 
         @if ($foundWorker)
-        <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
+        <div class="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 mb-6">
             <div class="flex items-center gap-3 mb-3">
-                <flux:icon.check-circle class="w-5 h-5 text-green-600 dark:text-green-400" />
-                <p class="font-semibold text-green-800 dark:text-green-300">Worker Found</p>
+                <flux:icon.user-circle class="w-5 h-5 text-zinc-500 dark:text-zinc-400" />
+                <p class="font-semibold text-zinc-800 dark:text-zinc-200">Worker Details</p>
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
                 <div>
@@ -143,14 +100,10 @@
             </div>
         </div>
 
-        {{-- Section I fields e, g, h — not available from worker DB --}}
+        {{-- Section I fields --}}
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Section I — Additional Employment Details</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-
-            {{-- Date of Employment --}}
             <flux:date-picker locale="en-GB" wire:model="dateOfEmployment" with-today label="Date of Employment" type="input"/>
-
-            {{-- Working Hours --}}
             <flux:field>
                 <flux:label>Working Hours</flux:label>
                 <div class="flex items-center gap-2 mt-1">
@@ -159,10 +112,8 @@
                     <flux:time-picker wire:model="workingHourTo" class="flex-1" />
                 </div>
             </flux:field>
-
         </div>
 
-        {{-- Facilities Provided --}}
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             @foreach(['facilityMeals' => 'Meals', 'facilityAccommodation' => 'Accommodation', 'facilityTransportation' => 'Transportation'] as $field => $label)
             <flux:select wire:model="{{ $field }}" variant="listbox" label="{{ $label }}" placeholder="Select...">
@@ -172,14 +123,12 @@
             @endforeach
         </div>
 
-        {{-- Company Details --}}
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Company Details</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <flux:input wire:model="tinNo" label="Tax Identification No. (TIN)" placeholder="e.g. C12345678900" />
             <flux:input wire:model="sstNo" label="SST No." placeholder="e.g. W10-1234-12345678" />
         </div>
 
-        {{-- Company PIC --}}
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Person In Charge (Company)</p>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <flux:input wire:model="companyPicName" label="Name" placeholder="Full name" />
@@ -191,10 +140,9 @@
 
         {{-- Step 3: Incident Details --}}
         @if ($step === 3)
-        <flux:heading size="lg" class="mb-1">Step 3: Incident Details</flux:heading>
+        <flux:heading size="lg" class="mb-1">Step 2: Incident Details</flux:heading>
         <flux:subheading class="mb-6">Based on FCL Form (CLAB/SOP/08/23)</flux:subheading>
 
-        {{-- Incident Type --}}
         <flux:radio.group wire:model.live="incidentType" label="Incident Type" variant="cards" :indicator="false" class="mb-6 max-sm:flex-col">
             <flux:radio value="accident" icon="bolt" label="Accident" description="Worker was injured due to an accident at the workplace" />
             <flux:radio value="non_accident" icon="heart" label="Non-Accident" description="Worker fell ill or was diagnosed with a disease (not caused by an accident)" />
@@ -202,7 +150,6 @@
         @error('incidentType') <p class="text-red-500 dark:text-red-400 text-sm -mt-4 mb-4">{{ $message }}</p> @enderror
 
         @if ($incidentType === 'accident')
-        {{-- SECTION II: Accident Details --}}
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Section II — Accident Details</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <flux:date-picker locale="en-GB" wire:model="incidentDate" label="Date of Accident" with-today type="input" required />
@@ -237,7 +184,6 @@
         @endif
 
         @if ($incidentType === 'non_accident')
-        {{-- SECTION II: Non-Accident Details --}}
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Section II — Non-Accident Details</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <flux:date-picker locale="en-GB" wire:model="incidentDate" label="Date of Illness" with-today type="input" required />
@@ -268,7 +214,7 @@
         </div>
         @endif
 
-        @if ($claimCategory === 'hospitalization' && $incidentType)
+        @if ($claim->claim_category === 'hospitalization' && $incidentType)
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <flux:date-picker locale="en-GB" wire:model="admissionDate" label="Admission Date" with-today type="input" required />
             <flux:date-picker locale="en-GB" wire:model="dischargeDate" label="Discharge Date" with-today type="input" />
@@ -276,21 +222,18 @@
         @endif
 
         @if ($incidentType)
-        {{-- SECTION III: Insurance Coverage --}}
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3 mt-2">Section III — Insurance Coverage</p>
         <flux:input wire:model="insurancePolicyNo" label="Insurance Policy No." placeholder="No. Polisi" />
         @endif
-
         @endif
 
         {{-- Step 4: Documents --}}
         @if ($step === 4)
-        <flux:heading size="lg" class="mb-1">Step 4: Required Documents</flux:heading>
-        <flux:text class="mb-6">Please download, complete, and send the following documents to our office by post or in person.</flux:text>
+        <flux:heading size="lg" class="mb-1">Step 3: Supporting Documents</flux:heading>
+        <flux:text class="mb-6">Upload any updated documents to support your appeal. Previously submitted documents remain unless replaced.</flux:text>
 
-        {{-- Downloadable Forms --}}
         @if ($downloadableDocs->isNotEmpty())
-        <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">Form to Download & Complete</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">Forms to Download & Complete</p>
         <div class="space-y-2 mb-6">
             @foreach ($downloadableDocs as $doc)
             <div class="flex items-center justify-between border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
@@ -298,21 +241,10 @@
                     <div class="w-9 h-9 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
                         <flux:icon.arrow-down-tray class="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <div>
-                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->label }}</p>
-                        @if ($doc->document_type === 'fwhs_medical_form')
-                        <p class="text-xs text-zinc-500 dark:text-zinc-400">To be completed by the attending doctor — bring this form to the hospital</p>
-                        @elseif ($doc->document_type === 'fwhs_checklist')
-                        <p class="text-xs text-zinc-500 dark:text-zinc-400">Download, tick all items, and include with your submission</p>
-                        @else
-                        <p class="text-xs text-zinc-500 dark:text-zinc-400">Pre-filled with your details — complete Section III (Reporter) and sign before submitting</p>
-                        @endif
-                    </div>
+                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->label }}</p>
                 </div>
-                @if ($doc->file_path && !in_array($doc->document_type, ['accident_fcl', 'non_accident_fcl']))
+                @if ($doc->file_path)
                 <flux:button wire:click="downloadDoc({{ $doc->id }})" size="sm" variant="filled" icon="arrow-down-tray">Download</flux:button>
-                @elseif (in_array($doc->document_type, ['accident_fcl', 'non_accident_fcl']))
-                <flux:button wire:click="downloadFcl" size="sm" variant="filled" icon="arrow-down-tray">Download</flux:button>
                 @else
                 <flux:button size="sm" variant="outline" icon="arrow-down-tray" disabled>No File</flux:button>
                 @endif
@@ -321,26 +253,40 @@
         </div>
         @endif
 
-        {{-- Original Supporting Documents --}}
-        @php $submitDocs = $requiredDocs->filter(fn($d) => !$downloadableDocs->contains('id', $d->id)); @endphp
-        @if ($submitDocs->isNotEmpty())
-        <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">Original Documents to Submit</p>
-        <div class="space-y-2 mb-6">
-            @foreach ($submitDocs as $doc)
-            <div class="flex items-center gap-3 border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
-                <div class="w-9 h-9 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
-                    <flux:icon.document-text class="w-5 h-5 text-zinc-500 dark:text-zinc-400" />
+        @if ($requiredDocs->isNotEmpty())
+        <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">Upload Documents</p>
+        <div class="space-y-4 mb-6">
+            @foreach ($requiredDocs as $doc)
+            @php $existing = $claim->documents->firstWhere('document_type', $doc->document_type); @endphp
+            <div class="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-9 h-9 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
+                        <flux:icon.document-text class="w-5 h-5 text-zinc-500 dark:text-zinc-400" />
+                    </div>
+                    <div>
+                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->label }}</p>
+                        @if ($existing?->file_path)
+                        <p class="text-xs text-green-600 dark:text-green-400">Previously submitted — upload to replace</p>
+                        @else
+                        <p class="text-xs text-zinc-400">No file uploaded yet</p>
+                        @endif
+                    </div>
                 </div>
-                <div>
-                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->label }}</p>
-                    <p class="text-xs text-zinc-500 dark:text-zinc-400">Please submit the original copy</p>
-                </div>
+                <input
+                    type="file"
+                    wire:model="uploadedFiles.{{ $doc->document_type }}"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    class="block w-full text-sm text-zinc-700 dark:text-zinc-300
+                           file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0
+                           file:text-sm file:font-medium file:bg-zinc-100 file:text-zinc-700
+                           dark:file:bg-zinc-800 dark:file:text-zinc-300"
+                />
+                <div wire:loading wire:target="uploadedFiles.{{ $doc->document_type }}" class="text-xs text-zinc-400 mt-1">Uploading…</div>
             </div>
             @endforeach
         </div>
         @endif
 
-        {{-- Postal Address --}}
         <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
             <div class="flex items-start gap-3">
                 <flux:icon.map-pin class="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
@@ -356,10 +302,6 @@
                 </div>
             </div>
         </div>
-
-        <flux:text class="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-            Once submitted, our admin team will process your claim and mark each document as received upon arrival.
-        </flux:text>
         @endif
 
         </div>
@@ -367,12 +309,14 @@
 
     {{-- Navigation Buttons --}}
     <div class="flex justify-between mt-6">
-        @if ($step > 1)
+        @if ($step > 2)
         <flux:button wire:click="previousStep" variant="filled">
             Previous
         </flux:button>
         @else
-        <div></div>
+        <flux:button :href="route('claims.show', $claim)" wire:navigate variant="ghost" icon="arrow-left">
+            Back to Claim
+        </flux:button>
         @endif
 
         @if ($step < 4)
@@ -381,7 +325,7 @@
         </flux:button>
         @else
         <flux:button wire:click="submit" variant="primary" icon="paper-airplane">
-            Submit Claim
+            Resubmit Appeal
         </flux:button>
         @endif
     </div>

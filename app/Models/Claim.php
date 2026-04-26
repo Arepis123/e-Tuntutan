@@ -27,6 +27,18 @@ class Claim extends Model
         'admission_date',
         'discharge_date',
         'submitted_at',
+        'documents_received_at',
+        'documents_received_by',
+        'submitted_to_insurer_at',
+        'submitted_to_insurer_by',
+        'insurer_decision',
+        'insurer_decided_at',
+        'insurer_decided_by',
+        'insurer_approval_letter',
+        'insurer_rejection_reason',
+        'insurer_rejection_attachment',
+        'appealed_at',
+        'appeal_count',
         'approved_at',
         'rejected_at',
         'closed_at',
@@ -37,16 +49,36 @@ class Claim extends Model
         'company_pic_name',
         'company_pic_phone',
         'company_pic_email',
+        'date_of_employment',
+        'working_hour_from',
+        'working_hour_to',
+        'facility_meals',
+        'facility_accommodation',
+        'facility_transportation',
+        'incident_time',
+        'incident_location',
+        'injury_types',
+        'injury_type_other',
+        'injury_description',
+        'disease_type',
+        'is_historical_disease',
+        'is_work_related',
+        'work_related_description',
+        'insurance_policy_no',
     ];
 
     protected $casts = [
         'incident_date'  => 'date',
         'admission_date' => 'date',
         'discharge_date' => 'date',
-        'submitted_at'   => 'date',
-        'approved_at'    => 'date',
-        'rejected_at'    => 'date',
-        'closed_at'      => 'date',
+        'submitted_at'            => 'datetime',
+        'documents_received_at'   => 'datetime',
+        'submitted_to_insurer_at' => 'datetime',
+        'insurer_decided_at'      => 'datetime',
+        'appealed_at'             => 'datetime',
+        'approved_at'             => 'datetime',
+        'rejected_at'             => 'datetime',
+        'closed_at'               => 'datetime',
     ];
 
     public function worker(): BelongsTo
@@ -57,6 +89,21 @@ class Claim extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function documentsReceivedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'documents_received_by');
+    }
+
+    public function submittedToInsurerBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_to_insurer_by');
+    }
+
+    public function insurerDecidedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'insurer_decided_by');
     }
 
     public function documents(): HasMany

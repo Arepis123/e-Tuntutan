@@ -28,8 +28,8 @@ class DocumentConfigSeeder extends Seeder
         }
 
         foreach (['accident', 'non_accident'] as $incident) {
-            $rows[] = $base + ['file_path' => 'attachments/FWHS REIMBURSEMENT MEDICAL FORM.pdf', 'claim_type' => 'fwhs', 'claim_category' => 'hospitalization', 'incident_type' => $incident, 'document_type' => 'fwhs_medical_form', 'label' => 'FWHS Reimbursement Medical Form',  'is_required' => true,  'is_downloadable' => true, 'sort_order' => 5];
-            $rows[] = $base + ['file_path' => 'attachments/CHECKLIST FWHS.pdf',                  'claim_type' => 'fwhs', 'claim_category' => 'hospitalization', 'incident_type' => $incident, 'document_type' => 'fwhs_checklist',    'label' => 'Checklist Tuntutan Insuran FWHS', 'is_required' => false, 'is_downloadable' => true, 'sort_order' => 6];
+            $rows[] = ['file_path' => 'attachments/FWHS REIMBURSEMENT MEDICAL FORM.pdf', 'claim_type' => 'fwhs', 'claim_category' => 'hospitalization', 'incident_type' => $incident, 'document_type' => 'fwhs_medical_form', 'label' => 'FWHS Reimbursement Medical Form',  'is_required' => true,  'is_downloadable' => true, 'sort_order' => 5] + $base;
+            $rows[] = ['file_path' => 'attachments/CHECKLIST FWHS.pdf',                  'claim_type' => 'fwhs', 'claim_category' => 'hospitalization', 'incident_type' => $incident, 'document_type' => 'fwhs_checklist',    'label' => 'Checklist Tuntutan Insuran FWHS', 'is_required' => false, 'is_downloadable' => true, 'sort_order' => 6] + $base;
         }
 
         foreach (['green_card', 'perkeso'] as $type) {

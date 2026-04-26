@@ -137,6 +137,7 @@ class ClaimCreate extends Component
             ->leftJoin('mst_countries', 'workers.wkr_country', '=', 'mst_countries.cty_id')
             ->leftJoin('contractors', 'workers.wkr_currentemp', '=', 'contractors.ctr_clab_no')
             ->leftJoin('mst_states', 'contractors.ctr_state', '=', 'mst_states.state_id')
+            ->leftJoin('mst_wkr_availability', 'workers.wkr_transtatus', '=', 'mst_wkr_availability.avlab_id')
             ->select(
                 'workers.*',
                 'mst_countries.cty_desc as country_name',
@@ -145,7 +146,8 @@ class ClaimCreate extends Component
                 'contractors.ctr_addr2 as contractor_addr2',
                 'contractors.ctr_addr3 as contractor_addr3',
                 'contractors.ctr_pcode as contractor_pcode',
-                'mst_states.state_name as contractor_state'
+                'mst_states.state_name as contractor_state',
+                'mst_wkr_availability.avlab_desc as worker_status'
             )
             ->where('wkr_passno', $this->passportNumber);
 
@@ -192,7 +194,8 @@ class ClaimCreate extends Component
                     $worker->contractor_state ?? null,
                 ]
             ))),
-            'worker_type'         => $isOutsource ? 'outsource' : 'normal',
+            'worker_type'         => $isOutsource ? 'outsource' : 'existing',
+            'worker_status'       => $worker->worker_status ?? null,
         ];
     }
 
@@ -220,8 +223,6 @@ class ClaimCreate extends Component
 
     protected function validateWorkerStep(): bool
     {
-        $this->validate(['passportNumber' => 'required|string']);
-
         if (! $this->foundWorker) {
             $this->addError('passportNumber', 'Please search and confirm the worker before proceeding.');
             return false;
@@ -250,12 +251,16 @@ class ClaimCreate extends Component
             $worker = Worker::updateOrCreate(
                 ['passport_number' => $this->foundWorker['passport_number']],
                 [
-                    'name'          => $this->foundWorker['name'],
-                    'nationality'   => $this->foundWorker['nationality'],
-                    'date_of_birth' => $this->foundWorker['date_of_birth'],
-                    'worker_type'   => $this->foundWorker['worker_type'],
-                    'phone'         => $this->foundWorker['phone'],
-                    'address'       => $this->foundWorker['address'],
+                    'name'            => $this->foundWorker['name'],
+                    'nationality'     => $this->foundWorker['nationality'],
+                    'date_of_birth'   => $this->foundWorker['date_of_birth'],
+                    'gender'          => $this->foundWorker['gender'],
+                    'passport_expiry' => $this->foundWorker['passport_expiry'] !== 'NO DATA FOUND' ? $this->foundWorker['passport_expiry'] : null,
+                    'permit_expiry'   => $this->foundWorker['permit_expiry'] !== 'NO DATA FOUND' ? $this->foundWorker['permit_expiry'] : null,
+                    'worker_type'     => $this->foundWorker['worker_type'],
+                    'worker_status'   => $this->foundWorker['worker_status'],
+                    'phone'           => $this->foundWorker['phone'],
+                    'address'         => $this->foundWorker['address'],
                     'employer_name'    => $this->foundWorker['contractor_name'],
                     'employer_address' => $this->foundWorker['contractor_address'],
                 ]
@@ -314,6 +319,59 @@ class ClaimCreate extends Component
         $this->redirect(route('claims.index'), navigate: true);
     }
 
+    public function downloadFcl(): mixed
+    {
+        $data = [
+            'incidentType'           => $this->incidentType,
+            'worker'                 => $this->foundWorker,
+            'incidentDate'           => $this->incidentDate,
+            'incidentTime'           => $this->incidentTime,
+            'incidentLocation'       => $this->incidentLocation,
+            'incidentDescription'    => $this->incidentDescription,
+            'injuryTypes'            => $this->injuryTypes,
+            'injuryTypeOther'        => $this->injuryTypeOther,
+            'injuryDescription'      => $this->injuryDescription,
+            'diseaseType'            => $this->diseaseType,
+            'isHistoricalDisease'    => $this->isHistoricalDisease,
+            'isWorkRelated'          => $this->isWorkRelated,
+            'workRelatedDescription' => $this->workRelatedDescription,
+            'hospitalName'           => $this->hospitalName,
+            'dateOfEmployment'       => $this->dateOfEmployment,
+            'workingHourFrom'        => $this->workingHourFrom,
+            'workingHourTo'          => $this->workingHourTo,
+            'facilityMeals'          => $this->facilityMeals,
+            'facilityAccommodation'  => $this->facilityAccommodation,
+            'facilityTransportation' => $this->facilityTransportation,
+        ];
+
+        $pdf      = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.fcl-form', $data)->setPaper('a4');
+        $filename = $this->incidentType === 'accident' ? 'FCL_Accident_Form.pdf' : 'FCL_Non_Accident_Form.pdf';
+
+        return response()->streamDownload(fn () => print($pdf->output()), $filename, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
+
+    public function downloadDoc(int $id): mixed
+    {
+        $doc = \App\Models\DocumentConfig::findOrFail($id);
+
+        if (! $doc->file_path) {
+            return null;
+        }
+
+        $disk = str_starts_with($doc->file_path, 'documents/') ? 'public' : 'local';
+        $path = $disk === 'local'
+            ? public_path($doc->file_path)
+            : \Illuminate\Support\Facades\Storage::disk('public')->path($doc->file_path);
+
+        $filename = \Illuminate\Support\Str::slug($doc->label) . '.pdf';
+
+        return response()->streamDownload(function () use ($path) {
+            readfile($path);
+        }, $filename, ['Content-Type' => 'application/pdf']);
+    }
+
     public function render()
     {
         $configs          = $this->getDocumentConfigs();
@@ -323,7 +381,7 @@ class ClaimCreate extends Component
         return view('livewire.claims.claim-create', compact('requiredDocs', 'downloadableDocs'));
     }
 
-    protected function getDocumentConfigs(): \Illuminate\Database\Eloquent\Collection
+    protected function getDocumentConfigs(): \Illuminate\Support\Collection
     {
         if (! $this->claimType || ! $this->claimCategory) {
             return collect();

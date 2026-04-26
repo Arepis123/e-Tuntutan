@@ -121,8 +121,8 @@ class EmployerUserProvider implements UserProvider
     {
         $externalId = $external->getKey();
 
-        $fullName = trim(($external->u_fname ?? '') . ' ' . ($external->u_lname ?? ''))
-            ?: $external->u_username;
+        $name        = trim($external->u_lname ?? '') ?: $external->u_username;
+        $companyName = trim($external->u_fname ?? '') ?: null;
 
         $email = $external->u_email1
             ?: $external->u_username . '@employer.clab.local';
@@ -131,22 +131,24 @@ class EmployerUserProvider implements UserProvider
 
         if (! $localUser) {
             $localUser = User::create([
-                'name'        => $fullName,
-                'email'       => $email,
-                'password'    => Hash::make(Str::random(32)), // unusable local password
-                'username'    => $external->u_username,
-                'phone'       => $external->u_mobileno ?? $external->u_contactno ?? null,
-                'external_id' => $externalId,
+                'name'         => $name,
+                'company_name' => $companyName,
+                'email'        => $email,
+                'password'     => Hash::make(Str::random(32)), // unusable local password
+                'username'     => $external->u_username,
+                'phone'        => $external->u_mobileno ?? $external->u_contactno ?? null,
+                'external_id'  => $externalId,
             ]);
 
             $localUser->assignRole('employer');
         } else {
             // Keep name/email/username/phone in sync on each login
             $localUser->update([
-                'name'     => $fullName,
-                'email'    => $email,
-                'username' => $external->u_username,
-                'phone'    => $external->u_mobileno ?? $external->u_contactno ?? null,
+                'name'         => $name,
+                'company_name' => $companyName,
+                'email'        => $email,
+                'username'     => $external->u_username,
+                'phone'        => $external->u_mobileno ?? $external->u_contactno ?? null,
             ]);
         }
 
