@@ -3,14 +3,6 @@
         <div>
             <div class="flex items-center gap-3 mb-1">
                 <flux:heading size="xl">{{ $claim->claim_number }}</flux:heading>
-                <flux:badge color="{{ $claim->status_color }}" size="sm">
-                    {{ match($claim->status) {
-                        'open' => 'Open',
-                        'in_progress' => 'In Progress',
-                        'closed' => 'Closed',
-                        default => $claim->status
-                    } }}
-                </flux:badge>
             </div>
             <flux:subheading>{{ $claim->getClaimTypeLabel() }} — {{ $claim->claim_category === 'hospitalization' ? 'Hospitalization' : 'Death' }}</flux:subheading>
         </div>
@@ -25,13 +17,14 @@
         <flux:dropdown>
             <flux:button
                 icon:trailing="chevron-down"
-                icon="{{ match($claim->status) { 'open' => 'fire', 'in_progress' => 'clock', 'closed' => 'check-circle', default => 'arrow-path' } }}"
-                variant="{{ match($claim->status) { 'open' => 'danger', 'in_progress' => 'primary', 'closed' => 'filled', default => 'outline' } }}"
-            >
+                icon="{{ match($claim->status) { 'open' => 'mail-open', 'in_progress' => 'clock', 'closed' => 'check-circle', default => 'arrow-path' } }}"                
+                color="{{ match($claim->status) { 'open' => 'red', 'in_progress' => 'yellow', 'closed' => 'emerald', default => '' } }}"
+                variant="primary"
+                >
                 {{ match($claim->status) { 'open' => 'Open', 'in_progress' => 'In Progress', 'closed' => 'Closed', default => ucfirst($claim->status) } }}
             </flux:button>
             <flux:menu>
-                <flux:menu.item icon="fire" wire:click="changeStatus('open')">Open</flux:menu.item>
+                <flux:menu.item icon="mail-open" wire:click="changeStatus('open')">Open</flux:menu.item>
                 <flux:menu.item icon="clock" wire:click="changeStatus('in_progress')">In Progress</flux:menu.item>
                 <flux:menu.item icon="check-circle" wire:click="changeStatus('closed')">Closed</flux:menu.item>
             </flux:menu>
@@ -305,8 +298,21 @@
 
             {{-- Documents --}}
             <flux:card class="dark:bg-zinc-900">
-                <flux:heading size="lg" class="mb-1">Required Documents</flux:heading>
-                <flux:text class="mb-4 text-sm">Mark each document as received when the physical copy arrives.</flux:text>
+                <div class="flex items-start justify-between mb-4">
+                    <div>
+                        <flux:heading size="lg" class="mb-1">Required Documents</flux:heading>
+                        <flux:text class="text-sm">Mark each document as received when the physical copy arrives.</flux:text>
+                    </div>
+                    @can('claims.approve')
+                    <flux:dropdown position="bottom" align="end">
+                        <flux:button icon="ellipsis-horizontal" variant="ghost" size="sm" />
+                        <flux:menu>
+                            <flux:menu.item wire:click="markAllReceived" icon="check-circle">Mark all received</flux:menu.item>
+                            <flux:menu.item wire:click="notifyMissingDocuments" icon="envelope">Notify contractor of missing docs</flux:menu.item>
+                        </flux:menu>
+                    </flux:dropdown>
+                    @endcan
+                </div>
 
                 @if ($claim->documents->count() > 0)
                 @php $allReceived = $claim->documents->every(fn($d) => $d->is_received); @endphp
@@ -448,7 +454,7 @@
                     @if ($claim->documents_received_at)
                     <flux:timeline.item>
                         <flux:timeline.indicator>
-                            <flux:icon.file-check variant="micro" />
+                            <flux:icon.check-check variant="micro" />
                         </flux:timeline.indicator>
                         <flux:timeline.content>
                             <div class="flex items-center justify-between">
@@ -483,7 +489,7 @@
                     <flux:timeline.item>
                         <flux:timeline.indicator>
                             @if ($claim->insurer_decision === 'approved')
-                                <flux:icon.check variant="micro" />
+                                <flux:icon.circle-check variant="micro" />
                             @else
                                 <flux:icon.x variant="micro" />
                             @endif
@@ -768,6 +774,41 @@
                 <flux:modal.close>
                     <flux:button variant="ghost" class="w-full">Cancel</flux:button>
                 </flux:modal.close>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Notify Missing Documents Compose Modal --}}
+    <flux:modal name="notify-missing-docs" class="max-w-2xl">
+        <div class="p-6 space-y-4">
+            <flux:heading size="lg">Notify Contractor — Missing Documents</flux:heading>
+            <flux:text class="text-sm">Review and edit the email before sending. The email will be sent to <strong>{{ $claim->user?->email }}</strong>.</flux:text>
+
+            <flux:field>
+                <flux:label>Subject</flux:label>
+                <flux:input wire:model="emailSubject" />
+                <flux:error name="emailSubject" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>CC <span class="text-zinc-400 font-normal">(comma-separated, optional)</span></flux:label>
+                <flux:input wire:model="emailCc" placeholder="e.g. pic@clab.com, manager@clab.com" />
+                <flux:error name="emailCc" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Body</flux:label>
+                <flux:textarea wire:model="emailBody" rows="12" class="font-mono text-sm" />
+                <flux:error name="emailBody" />
+            </flux:field>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">Cancel</flux:button>
+                </flux:modal.close>
+                <flux:button wire:click="sendMissingDocumentsEmail" variant="primary" icon="paper-airplane">
+                    Send Email
+                </flux:button>
             </div>
         </div>
     </flux:modal>

@@ -32,6 +32,11 @@ class ClaimDetail extends Component
     public string $insurerRejectionReason = '';
     public $insurerRejectionAttachment = null;
 
+    // Missing docs email compose
+    public string $emailSubject = '';
+    public string $emailBody    = '';
+    public string $emailCc      = '';
+
     public $newDocument;
     public string $newDocumentType = '';
 
@@ -211,6 +216,91 @@ class ClaimDetail extends Component
 
         $this->claim->update(['status' => $status]);
         $this->claim->refresh();
+    }
+
+    public function markAllReceived(): void
+    {
+        $this->authorize('claims.approve');
+
+        $now = now();
+
+        $this->claim->documents()
+            ->where('is_received', false)
+            ->update([
+                'is_received' => true,
+                'received_at' => $now,
+                'received_by' => Auth::id(),
+            ]);
+
+        if (! $this->claim->documents_received_at) {
+            $this->claim->update([
+                'documents_received_at' => $now,
+                'documents_received_by' => Auth::id(),
+            ]);
+        }
+
+        $this->claim->refresh();
+        $this->dispatch('notify', message: 'All documents marked as received.');
+    }
+
+    public function notifyMissingDocuments(): void
+    {
+        $this->authorize('claims.approve');
+
+        $missing = $this->claim->documents()->where('is_received', false)->get();
+
+        if ($missing->isEmpty()) {
+            $this->dispatch('notify', message: 'All documents are already received.');
+            return;
+        }
+
+        $docList = $missing->map(fn($d) => '- ' . $d->getDocumentTypeLabel())->join("\n");
+        $claim   = $this->claim;
+
+        $this->emailSubject = "[e-Tuntutan] Action Required — Missing Documents: {$claim->claim_number}";
+        $this->emailCc      = '';
+        $this->emailBody    = implode("\n\n", [
+            "Dear {$claim->user?->name},",
+            "We have reviewed your claim and found that the following required documents have not yet been received:",
+            "Claim No.: {$claim->claim_number}\nWorker: {$claim->worker->name} ({$claim->worker->passport_number})",
+            "Missing Documents:\n{$docList}",
+            "Please submit the above documents at your earliest convenience to avoid delays in processing your claim.",
+            "Thank you,\ne-Tuntutan CLAB",
+        ]);
+
+        $this->modal('notify-missing-docs')->show();
+    }
+
+    public function sendMissingDocumentsEmail(): void
+    {
+        $this->authorize('claims.approve');
+
+        $this->validate([
+            'emailSubject' => 'required|string|max:255',
+            'emailBody'    => 'required|string',
+            'emailCc'      => 'nullable|string',
+        ]);
+
+        $ccEmails = array_values(array_filter(array_map('trim', explode(',', $this->emailCc))));
+
+        foreach ($ccEmails as $email) {
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $this->addError('emailCc', "Invalid email address: {$email}");
+                return;
+            }
+        }
+
+        if ($this->claim->user) {
+            $this->claim->user->notify(new \App\Notifications\MissingDocumentsNotification(
+                $this->claim,
+                $this->emailSubject,
+                $this->emailBody,
+                $ccEmails,
+            ));
+        }
+
+        $this->modal('notify-missing-docs')->close();
+        $this->dispatch('notify', message: 'Contractor notified of missing documents.');
     }
 
     public function markDocumentReceived(int $documentId): void

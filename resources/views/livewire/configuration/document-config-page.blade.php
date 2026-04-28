@@ -150,17 +150,17 @@
             <div class="grid grid-cols-2 gap-4">
                 <flux:field>
                     <flux:label>Category</flux:label>
-                    <flux:select wire:model.live="newClaimCategory">
+                    <flux:select variant="listbox" multiple wire:model.live="newClaimCategory" placeholder="Choose categories...">
                         <flux:select.option value="hospitalization">Hospitalization</flux:select.option>
                         <flux:select.option value="death">Death</flux:select.option>
                     </flux:select>
                     <flux:error name="newClaimCategory" />
                 </flux:field>
 
-                @if ($newClaimCategory === 'hospitalization')
+                @if (in_array('hospitalization', $newClaimCategory))
                 <flux:field>
                     <flux:label>Incident Type</flux:label>
-                    <flux:select wire:model="newIncidentType">
+                    <flux:select variant="listbox" multiple wire:model="newIncidentType" placeholder="Choose incident types...">
                         <flux:select.option value="accident">Accident</flux:select.option>
                         <flux:select.option value="non_accident">Non-Accident</flux:select.option>
                     </flux:select>
@@ -175,10 +175,28 @@
                     <flux:label>Required</flux:label>
                 </flux:field>
                 <flux:field variant="inline">
-                    <flux:checkbox wire:model="newIsDownloadable" />
+                    <flux:checkbox wire:model.live="newIsDownloadable" />
                     <flux:label>Downloadable</flux:label>
                 </flux:field>
             </div>
+
+            @if ($newIsDownloadable)
+            <flux:field>
+                <flux:label>PDF File <span class="text-zinc-400 font-normal">(optional)</span></flux:label>
+                <input
+                    type="file"
+                    wire:model="newFile"
+                    accept=".pdf"
+                    class="block w-full text-sm text-zinc-700 dark:text-zinc-300
+                           file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0
+                           file:text-sm file:font-medium file:bg-zinc-100 file:text-zinc-700
+                           dark:file:bg-zinc-800 dark:file:text-zinc-300
+                           hover:file:bg-zinc-200 dark:hover:file:bg-zinc-700"
+                />
+                <div wire:loading wire:target="newFile" class="text-xs text-zinc-400 mt-1">Uploading…</div>
+                <flux:error name="newFile" />
+            </flux:field>
+            @endif
 
             <div class="flex justify-end gap-2 pt-2">
                 <flux:modal.close>

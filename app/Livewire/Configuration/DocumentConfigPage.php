@@ -24,12 +24,13 @@ class DocumentConfigPage extends Component
     public string $uploadLabel = '';
 
     // Add document state
-    public string $newLabel         = '';
-    public string $newDocumentType  = '';
-    public string $newClaimCategory = 'hospitalization';
-    public string $newIncidentType  = 'accident';
-    public bool   $newIsRequired    = true;
+    public string $newLabel          = '';
+    public string $newDocumentType   = '';
+    public array  $newClaimCategory  = ['hospitalization'];
+    public array  $newIncidentType   = ['accident', 'non_accident'];
+    public bool   $newIsRequired     = true;
     public bool   $newIsDownloadable = false;
+    public $newFile                  = null;
 
     public function toggle(int $id, string $field): void
     {
@@ -86,42 +87,60 @@ class DocumentConfigPage extends Component
     public function openAddDocument(): void
     {
         $this->reset('newLabel', 'newDocumentType');
-        $this->newClaimCategory  = 'hospitalization';
-        $this->newIncidentType   = 'accident';
+        $this->newClaimCategory  = ['hospitalization'];
+        $this->newIncidentType   = ['accident', 'non_accident'];
         $this->newIsRequired     = true;
         $this->newIsDownloadable = false;
+        $this->newFile           = null;
         $this->modal('add-doc')->show();
     }
 
     public function saveDocument(): void
     {
-        $this->validate([
-            'newLabel'         => 'required|string|max:255',
-            'newDocumentType'  => 'required|string|max:100|regex:/^[a-z0-9_]+$/',
-            'newClaimCategory' => 'required|in:hospitalization,death',
-            'newIncidentType'  => 'nullable|in:accident,non_accident',
-        ]);
+        $rules = [
+            'newLabel'           => 'required|string|max:255',
+            'newDocumentType'    => 'required|string|max:100|regex:/^[a-z0-9_]+$/',
+            'newClaimCategory'   => 'required|array|min:1',
+            'newClaimCategory.*' => 'in:hospitalization,death',
+            'newFile'            => 'nullable|file|mimes:pdf|max:10240',
+        ];
 
-        $incidentType = $this->newClaimCategory === 'death' ? null : $this->newIncidentType;
+        if (in_array('hospitalization', $this->newClaimCategory)) {
+            $rules['newIncidentType']    = 'required|array|min:1';
+            $rules['newIncidentType.*']  = 'in:accident,non_accident';
+        }
 
-        $maxOrder = DocumentConfig::where('claim_type', $this->activeTab)
-            ->where('claim_category', $this->newClaimCategory)
-            ->where('incident_type', $incidentType)
-            ->max('sort_order') ?? 0;
+        $this->validate($rules);
 
-        DocumentConfig::create([
-            'claim_type'      => $this->activeTab,
-            'claim_category'  => $this->newClaimCategory,
-            'incident_type'   => $incidentType,
-            'document_type'   => $this->newDocumentType,
-            'label'           => $this->newLabel,
-            'is_required'     => $this->newIsRequired,
-            'is_downloadable' => $this->newIsDownloadable,
-            'sort_order'      => $maxOrder + 1,
-        ]);
+        $filePath = $this->newFile?->store('documents', 'public');
+
+        $count = 0;
+        foreach ($this->newClaimCategory as $category) {
+            $incidentTypes = $category === 'death' ? [null] : $this->newIncidentType;
+
+            foreach ($incidentTypes as $incidentType) {
+                $maxOrder = DocumentConfig::where('claim_type', $this->activeTab)
+                    ->where('claim_category', $category)
+                    ->where('incident_type', $incidentType)
+                    ->max('sort_order') ?? 0;
+
+                DocumentConfig::create([
+                    'claim_type'      => $this->activeTab,
+                    'claim_category'  => $category,
+                    'incident_type'   => $incidentType,
+                    'document_type'   => $this->newDocumentType,
+                    'label'           => $this->newLabel,
+                    'is_required'     => $this->newIsRequired,
+                    'is_downloadable' => $this->newIsDownloadable,
+                    'file_path'       => $filePath,
+                    'sort_order'      => $maxOrder + 1,
+                ]);
+                $count++;
+            }
+        }
 
         $this->modal('add-doc')->close();
-        $this->dispatch('notify', message: 'Document added successfully.');
+        $this->dispatch('notify', message: "Document added to {$count} group(s) successfully.");
     }
 
     public function deleteDocument(int $id): void

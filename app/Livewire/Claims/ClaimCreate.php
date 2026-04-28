@@ -184,16 +184,17 @@ class ClaimCreate extends Component
             'phone'               => $worker->wkr_tel ?? null,
             'address'             => $worker->wkr_address1 ?? null,
             'contractor_name'    => $worker->contractor_name ?? null,
-            'contractor_address' => implode(', ', array_filter(array_map(
-                fn($part) => trim($part ?? '', " \t\n\r,"),
-                [
-                    $worker->contractor_addr1 ?? null,
-                    $worker->contractor_addr2 ?? null,
-                    $worker->contractor_addr3 ?? null,
-                    $worker->contractor_pcode ?? null,
-                    $worker->contractor_state ?? null,
-                ]
-            ))),
+            'contractor_address' => (function () use ($worker) {
+                $trim = fn($v) => trim($v ?? '', " \t\n\r,");
+                $lines = array_filter([$trim($worker->contractor_addr1), $trim($worker->contractor_addr2)]);
+                $addr3    = $trim($worker->contractor_addr3);
+                $pcode    = $trim($worker->contractor_pcode);
+                $addr3Pcode = implode(' ', array_filter([$addr3, $pcode]));
+                if ($addr3Pcode) $lines[] = $addr3Pcode;
+                $state = $trim($worker->contractor_state);
+                if ($state) $lines[] = $state;
+                return implode(', ', $lines);
+            })(),
             'worker_type'         => $isOutsource ? 'outsource' : 'existing',
             'worker_status'       => $worker->worker_status ?? null,
         ];
