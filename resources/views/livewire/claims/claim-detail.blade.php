@@ -7,7 +7,7 @@
             <flux:subheading>{{ $claim->getClaimTypeLabel() }} — {{ $claim->claim_category === 'hospitalization' ? 'Hospitalization' : 'Death' }}</flux:subheading>
         </div>
 
-        @if ($claim->insurer_decision === 'rejected' && $claim->user_id === auth()->id() && auth()->user()->hasRole('employer'))
+        @if ($claim->insurer_decision === 'rejected' && $claim->user_id === auth()->id() && auth()->user()->hasRole('employer') && $claim->appeal_count === 0)
         <flux:button :href="route('claims.appeal', $claim)" wire:navigate variant="danger" icon="arrow-path">
             Appeal Claim
         </flux:button>
@@ -17,16 +17,16 @@
         <flux:dropdown>
             <flux:button
                 icon:trailing="chevron-down"
-                icon="{{ match($claim->status) { 'open' => 'mail-open', 'in_progress' => 'clock', 'closed' => 'check-circle', default => 'arrow-path' } }}"                
+                icon="{{ match($claim->status) { 'open' => 'envelope-open', 'in_progress' => 'clock', 'closed' => 'archive-box', default => 'arrow-path' } }}"                
                 color="{{ match($claim->status) { 'open' => 'red', 'in_progress' => 'yellow', 'closed' => 'emerald', default => '' } }}"
                 variant="primary"
                 >
                 {{ match($claim->status) { 'open' => 'Open', 'in_progress' => 'In Progress', 'closed' => 'Closed', default => ucfirst($claim->status) } }}
             </flux:button>
             <flux:menu>
-                <flux:menu.item icon="mail-open" wire:click="changeStatus('open')">Open</flux:menu.item>
+                <flux:menu.item icon="envelope-open" wire:click="changeStatus('open')">Open</flux:menu.item>
                 <flux:menu.item icon="clock" wire:click="changeStatus('in_progress')">In Progress</flux:menu.item>
-                <flux:menu.item icon="check-circle" wire:click="changeStatus('closed')">Closed</flux:menu.item>
+                <flux:menu.item icon="archive-box" wire:click="changeStatus('closed')">Closed</flux:menu.item>
             </flux:menu>
         </flux:dropdown>
         @endif
@@ -413,6 +413,20 @@
                             </div>
                         </div>
                         <p class="text-sm text-zinc-700 dark:text-zinc-300">{{ $note->note }}</p>
+                        @if ($note->attachments)
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            @foreach ($note->attachments as $i => $att)
+                            <button
+                                wire:click="downloadNoteAttachment({{ $note->id }}, {{ $i }})"
+                                class="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-600"
+                            >
+                                <flux:icon.paper-clip class="w-3 h-3" />
+                                {{ $att['name'] }}
+                                <span class="text-zinc-400">({{ number_format($att['size'] / 1024, 0) }} KB)</span>
+                            </button>
+                            @endforeach
+                        </div>
+                        @endif
                     </div>
                     @endif
                     @empty
@@ -420,10 +434,29 @@
                     @endforelse
                 </div>
 
-                <div class="border-t border-zinc-200 dark:border-zinc-700 pt-4">
-                    <flux:textarea wire:model="newNote" placeholder="Add a note..." rows="3" class="mb-3" />
+                <div class="border-t border-zinc-200 dark:border-zinc-700 pt-4 space-y-3">
+                    <flux:textarea wire:model="newNote" placeholder="Add a note..." rows="3" />
+                    <div>
+                        <label class="block text-sm text-zinc-600 dark:text-zinc-400 mb-1">
+                            Attachments <span class="text-zinc-400 font-normal">(max 10 files, 3 MB each — PDF, Word, images)</span>
+                        </label>
+                        <input
+                            type="file"
+                            wire:model="noteFiles"
+                            multiple
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                            class="block w-full text-sm text-zinc-700 dark:text-zinc-300
+                                   file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0
+                                   file:text-sm file:font-medium file:bg-zinc-100 file:text-zinc-700
+                                   dark:file:bg-zinc-800 dark:file:text-zinc-300
+                                   hover:file:bg-zinc-200 dark:hover:file:bg-zinc-700"
+                        />
+                        <div wire:loading wire:target="noteFiles" class="text-xs text-zinc-400 mt-1">Uploading…</div>
+                        <flux:error name="noteFiles" />
+                        <flux:error name="noteFiles.*" />
+                    </div>
                     @if (auth()->user()->hasAnyRole(['admin','pic']))
-                    <div class="flex items-center gap-2 mb-3">
+                    <div class="flex items-center gap-2">
                         <flux:checkbox wire:model="noteIsInternal" id="internal" />
                         <label for="internal" class="text-sm text-zinc-600 dark:text-zinc-400">Internal note only</label>
                     </div>
@@ -501,6 +534,11 @@
                             </div>
                             @if ($claim->insurerDecidedBy)
                             <flux:text class="text-xs mt-0.5">Recorded by {{ $claim->insurerDecidedBy->name }}</flux:text>
+                            @endif
+                            @if ($claim->insurer_decision === 'approved' && $claim->payment_channel)
+                            <flux:text class="text-xs mt-0.5">
+                                Payment channel: <strong>{{ $claim->payment_channel === 'clab' ? 'Transfer to CLAB' : 'Transfer to Contractor' }}</strong>
+                            </flux:text>
                             @endif
                             @if ($claim->insurer_decision === 'rejected' && $claim->insurer_rejection_reason)
                             <flux:text class="text-xs mt-0.5 text-red-500">{{ $claim->insurer_rejection_reason }}</flux:text>
@@ -615,11 +653,40 @@
             </flux:card>
             @endif
 
+            {{-- Appeal Rejected — Close Prompt --}}
+            @if ($claim->appeal_count >= 1 && $claim->insurer_decision === 'rejected' && $claim->status !== 'closed')
+            @can('claims.close')
+            <flux:card class="dark:bg-zinc-900 border border-red-300 dark:border-red-700">
+                <div class="flex items-start gap-4">
+                    <div class="p-2 rounded-lg bg-red-50 dark:bg-red-900/30 shrink-0">
+                        <flux:icon.x-circle class="w-5 h-5 text-red-500" />
+                    </div>
+                    <div class="flex-1">
+                        <flux:heading size="md" class="mb-1">Appeal Rejected — Close Application</flux:heading>
+                        <flux:text class="text-sm mb-4">
+                            The insurer has rejected this claim after appeal. No further appeal is allowed.
+                            Please close the application to finalise the case.
+                        </flux:text>
+                        <flux:button
+                            wire:click="closeClaim"
+                            variant="primary"
+                            color="emerald"
+                            size="sm"
+                            icon="archive-box"
+                        >
+                            Close Application
+                        </flux:button>
+                    </div>
+                </div>
+            </flux:card>
+            @endcan
+            @endif
+
             {{-- Submitted By --}}
             <flux:card class="dark:bg-zinc-900">
                 <flux:heading size="lg" class="mb-4">Submitted By</flux:heading>
-                <p class="font-medium dark:text-white">{{ $claim->user->name }}</p>
-                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $claim->user->email }}</p>
+                <flux:text variant="strong" class="text-sm">{{ $claim->user->name }}</flux:text>
+                <flux:text class="text-sm">{{ $claim->user->email }}</flux:text>
                 @if ($claim->user->company_name)
                 <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $claim->user->company_name }}</p>
                 @endif
@@ -628,13 +695,13 @@
                 <div class="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
                     <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">Person In Charge</p>
                     @if ($claim->company_pic_name)
-                    <p class="font-medium dark:text-white text-sm">{{ $claim->company_pic_name }}</p>
+                    <flux:text variant="strong" class="text-sm">{{ $claim->company_pic_name }}</flux:text>
                     @endif
                     @if ($claim->company_pic_phone)
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $claim->company_pic_phone }}</p>
+                    <flux:text class="text-sm">{{ $claim->company_pic_phone }}</flux:text>
                     @endif
                     @if ($claim->company_pic_email)
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ $claim->company_pic_email }}</p>
+                    <flux:text class="text-sm">{{ $claim->company_pic_email }}</flux:text>
                     @endif
                 </div>
                 @endif
@@ -706,7 +773,16 @@
                 <flux:heading size="lg">Insurer Approved</flux:heading>
             </div>
 
-            <flux:text class="text-sm">Please upload the approval letter from Liberty Insurance as supporting proof. The contractor will be notified via email.</flux:text>
+            <flux:text class="text-sm">Please upload the approval letter and specify the payment channel as advised by Liberty Insurance.</flux:text>
+
+            <flux:field>
+                <flux:label>Payment Channel</flux:label>
+                <flux:select variant="listbox" wire:model="insurerPaymentChannel" placeholder="Select payment channel...">
+                    <flux:select.option value="clab">Transfer to CLAB</flux:select.option>
+                    <flux:select.option value="contractor">Transfer to Contractor</flux:select.option>
+                </flux:select>
+                <flux:error name="insurerPaymentChannel" />
+            </flux:field>
 
             <flux:field>
                 <flux:label>Approval Letter (PDF)</flux:label>

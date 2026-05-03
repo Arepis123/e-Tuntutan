@@ -35,6 +35,7 @@ class Claim extends Model
         'insurer_decided_at',
         'insurer_decided_by',
         'insurer_approval_letter',
+        'payment_channel',
         'insurer_rejection_reason',
         'insurer_rejection_attachment',
         'appealed_at',

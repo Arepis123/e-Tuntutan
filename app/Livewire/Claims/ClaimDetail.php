@@ -22,6 +22,7 @@ class ClaimDetail extends Component
 
     public string $newNote = '';
     public bool $noteIsInternal = true;
+    public array $noteFiles = [];
     public string $rejectionReason = '';
     public string $forwardTo = '';
     public bool $showRejectModal = false;
@@ -29,6 +30,7 @@ class ClaimDetail extends Component
 
     // Insurer decision
     public $insurerApprovalLetter = null;
+    public string $insurerPaymentChannel = '';
     public string $insurerRejectionReason = '';
     public $insurerRejectionAttachment = null;
 
@@ -48,17 +50,44 @@ class ClaimDetail extends Component
     public function addNote(): void
     {
         $this->validate([
-            'newNote' => 'required|min:3',
+            'newNote'    => 'required|min:3',
+            'noteFiles'  => 'nullable|array|max:10',
+            'noteFiles.*' => 'file|max:3072|mimes:pdf,doc,docx,jpg,jpeg,png',
         ]);
+
+        $attachments = [];
+        foreach ($this->noteFiles as $file) {
+            $name = $file->getClientOriginalName();
+            $mime = $file->getMimeType();
+            $path = $file->store("claims/{$this->claim->id}/notes", 'local');
+            $attachments[] = [
+                'path' => $path,
+                'name' => $name,
+                'size' => \Illuminate\Support\Facades\Storage::disk('local')->size($path),
+                'mime' => $mime,
+            ];
+        }
 
         $this->claim->claimNotes()->create([
             'user_id'     => Auth::id(),
             'note'        => $this->newNote,
             'is_internal' => $this->noteIsInternal,
+            'attachments' => $attachments ?: null,
         ]);
 
-        $this->reset('newNote');
+        $this->reset('newNote', 'noteFiles');
         $this->claim->refresh();
+    }
+
+    public function downloadNoteAttachment(int $noteId, int $index): mixed
+    {
+        $note = $this->claim->claimNotes()->findOrFail($noteId);
+        $attachment = $note->attachments[$index] ?? null;
+
+        abort_if(! $attachment, 404);
+
+        return \Illuminate\Support\Facades\Storage::disk('local')
+            ->download($attachment['path'], $attachment['name']);
     }
 
     public function approve(): void
@@ -120,7 +149,8 @@ class ClaimDetail extends Component
 
     public function openInsurerApprovedModal(): void
     {
-        $this->insurerApprovalLetter = null;
+        $this->insurerApprovalLetter  = null;
+        $this->insurerPaymentChannel  = '';
         $this->modal('insurer-approved')->show();
     }
 
@@ -135,6 +165,7 @@ class ClaimDetail extends Component
     {
         $this->validate([
             'insurerApprovalLetter' => 'required|file|mimes:pdf|max:10240',
+            'insurerPaymentChannel' => 'required|in:clab,contractor',
         ]);
 
         $path = $this->insurerApprovalLetter->store('insurer-letters', 'public');
@@ -144,6 +175,7 @@ class ClaimDetail extends Component
             'insurer_decided_at'      => now(),
             'insurer_decided_by'      => Auth::id(),
             'insurer_approval_letter' => $path,
+            'payment_channel'         => $this->insurerPaymentChannel,
         ]);
 
         if ($this->claim->user) {

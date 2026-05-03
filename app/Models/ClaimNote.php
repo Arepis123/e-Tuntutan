@@ -12,10 +12,12 @@ class ClaimNote extends Model
         'user_id',
         'note',
         'is_internal',
+        'attachments',
     ];
 
     protected $casts = [
         'is_internal' => 'boolean',
+        'attachments' => 'array',
     ];
 
     public function claim(): BelongsTo

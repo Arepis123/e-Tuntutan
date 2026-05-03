@@ -10,9 +10,9 @@
     @fluxAppearance
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-white dark:bg-zinc-800 antialiased">
+<body class="min-h-screen bg-zinc-50 dark:bg-zinc-800 antialiased">
 
-<flux:sidebar sticky collapsible class="bg-zinc-50 dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-700">
+<flux:sidebar sticky collapsible class="bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-700">
 
     <flux:sidebar.header>
         <flux:sidebar.brand href="{{ route('dashboard') }}" name="e-Tuntutan CLAB" />
@@ -51,16 +51,6 @@
         </flux:sidebar.item>
         @endcan
 
-        @can('payments.view')
-        <flux:sidebar.item
-            icon="banknotes"
-            href="{{ route('payments.index') }}"
-            :current="request()->routeIs('payments.*')"
-            wire:navigate
-        >
-            Payments
-        </flux:sidebar.item>
-        @endcan
 
         @can('users.manage')
         <flux:sidebar.item
