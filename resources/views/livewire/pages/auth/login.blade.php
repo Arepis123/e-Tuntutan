@@ -41,7 +41,6 @@ new #[Layout('layouts.guest')] class extends Component
             autocomplete="username"
             required
         />
-        @error('form.username') <p class="text-red-500 dark:text-red-400 text-sm -mt-3">{{ $message }}</p> @enderror
 
         <flux:input
             wire:model="form.password"
@@ -52,7 +51,6 @@ new #[Layout('layouts.guest')] class extends Component
             viewable
             required
         />
-        @error('form.password') <p class="text-red-500 dark:text-red-400 text-sm -mt-3">{{ $message }}</p> @enderror
 
         <div class="flex items-center justify-center">
             <flux:text class="text-center">Please use your credentials from the e-CLAB Portal to log in.</flux:text>

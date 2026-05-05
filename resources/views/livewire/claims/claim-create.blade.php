@@ -65,7 +65,7 @@
 
         <flux:radio.group wire:model.live="claimType" label="Claim Type" variant="cards" :indicator="false" class="mb-6 max-sm:flex-col">
             <flux:radio value="fwhs" icon="building-office-2" label="Insurance (FWHS)" description="Foreign Worker Hospitalization Scheme" />
-            <flux:radio value="green_card" icon="credit-card" label="Green Card" description="Construction industry insurance" />
+            <flux:radio value="green_card" icon="credit-card" label="Green Card" description="Construction Personnel Registration Card" />
             <flux:radio value="perkeso" icon="shield-check" label="PERKESO" description="Social Security (SOCSO)" />
         </flux:radio.group>
 
@@ -91,57 +91,56 @@
         </div>
 
         @if ($workerNotFound)
-        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
-            <p class="font-semibold text-red-700 dark:text-red-400">Worker not found</p>
-            <p class="text-sm text-red-600 dark:text-red-400">No worker with passport number <strong>{{ $passportNumber }}</strong> was found in the system.</p>
-        </div>
+        <flux:callout variant="danger" icon="x-circle" class="mb-4">
+            <flux:callout.heading>Worker not found</flux:callout.heading>
+            <flux:callout.text>No worker with passport number <strong>{{ $passportNumber }}</strong> was found in the system.</flux:callout.text>
+        </flux:callout>
         @endif
 
         @if ($foundWorker)
-        <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
-            <div class="flex items-center gap-3 mb-3">
-                <flux:icon.check-circle class="w-5 h-5 text-green-600 dark:text-green-400" />
-                <p class="font-semibold text-green-800 dark:text-green-300">Worker Found</p>
-            </div>
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
-                <div>
-                    <p class="text-zinc-500 dark:text-zinc-400">Name</p>
-                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['name'] ?: '—' }}</p>
+        <flux:callout variant="success" icon="check-circle" class="mb-6">
+            <flux:callout.heading>Worker Found</flux:callout.heading>
+            <flux:callout.text>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm mt-2">
+                    <div>
+                        <p class="text-zinc-500 dark:text-zinc-400">Name</p>
+                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['name'] ?: '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-zinc-500 dark:text-zinc-400">Gender</p>
+                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['gender'] ?: '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-zinc-500 dark:text-zinc-400">Date of Birth</p>
+                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['date_of_birth'] ?: '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-zinc-500 dark:text-zinc-400">Passport No.</p>
+                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['passport_number'] ?: '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-zinc-500 dark:text-zinc-400">Passport Expiry</p>
+                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['passport_expiry'] ?: '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-zinc-500 dark:text-zinc-400">Permit Expiry</p>
+                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['permit_expiry'] ?: '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-zinc-500 dark:text-zinc-400">Nationality</p>
+                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['nationality'] ?: '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-zinc-500 dark:text-zinc-400">Contractor</p>
+                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['contractor_name'] ?: '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-zinc-500 dark:text-zinc-400">Contractor Address</p>
+                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['contractor_address'] ?: '—' }}</p>
+                    </div>
                 </div>
-                <div>
-                    <p class="text-zinc-500 dark:text-zinc-400">Gender</p>
-                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['gender'] ?: '—' }}</p>
-                </div>
-                <div>
-                    <p class="text-zinc-500 dark:text-zinc-400">Date of Birth</p>
-                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['date_of_birth'] ?: '—' }}</p>
-                </div>
-                <div>
-                    <p class="text-zinc-500 dark:text-zinc-400">Passport No.</p>
-                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['passport_number'] ?: '—' }}</p>
-                </div>
-                <div>
-                    <p class="text-zinc-500 dark:text-zinc-400">Passport Expiry</p>
-                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['passport_expiry'] ?: '—' }}</p>
-                </div>
-                <div>
-                    <p class="text-zinc-500 dark:text-zinc-400">Permit Expiry</p>
-                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['permit_expiry'] ?: '—' }}</p>
-                </div>
-                <div>
-                    <p class="text-zinc-500 dark:text-zinc-400">Nationality</p>
-                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['nationality'] ?: '—' }}</p>
-                </div>
-                <div>
-                    <p class="text-zinc-500 dark:text-zinc-400">Contractor</p>
-                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['contractor_name'] ?: '—' }}</p>
-                </div>
-                <div>
-                    <p class="text-zinc-500 dark:text-zinc-400">Contractor Address</p>
-                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $foundWorker['contractor_address'] ?: '—' }}</p>
-                </div>
-            </div>
-        </div>
+            </flux:callout.text>
+        </flux:callout>
 
         {{-- Section I fields e, g, h — not available from worker DB --}}
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Section I — Additional Employment Details</p>
@@ -172,12 +171,16 @@
             @endforeach
         </div>
 
+        <flux:separator class="my-6"/>
+
         {{-- Company Details --}}
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Company Details</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <flux:input wire:model="tinNo" label="Tax Identification No. (TIN)" placeholder="e.g. C12345678900" />
             <flux:input wire:model="sstNo" label="SST No." placeholder="e.g. W10-1234-12345678" />
         </div>
+
+        <flux:separator class="my-6"/>
 
         {{-- Company PIC --}}
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Person In Charge (Company)</p>
@@ -276,7 +279,8 @@
         @endif
 
         @if ($incidentType)
-        {{-- SECTION III: Insurance Coverage --}}
+        {{-- SECTION III: Insurance Coverage --}}        
+        <flux:separator class="my-6"/>
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3 mt-2">Section III — Insurance Coverage</p>
         <flux:input wire:model="insurancePolicyNo" label="Insurance Policy No." placeholder="No. Polisi" />
         @endif
@@ -305,32 +309,32 @@
         <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">Forms to Download & Complete</p>
         <div class="space-y-2 mb-6">
             @foreach ($downloadableDocs as $doc)
-            <div class="flex items-center justify-between border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+            <flux:card class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 dark:bg-zinc-900 py-4">
                 <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
+                    <div class="w-9 h-9 bg-blue-50 dark:bg-blue-900/50 rounded-lg flex items-center justify-center shrink-0">
                         <flux:icon.arrow-down-tray class="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->label }}</p>
+                        <p class="font-medium">{{ $doc->label }}</p>
                         @if ($isEmployerManaged)
-                        <p class="text-xs text-zinc-500 dark:text-zinc-400">Download, complete, and send a digital copy to CLAB</p>
+                        <flux:text size="sm">Download, complete, and send a digital copy to CLAB</flux:text>
                         @elseif ($doc->document_type === 'fwhs_medical_form')
-                        <p class="text-xs text-zinc-500 dark:text-zinc-400">To be completed by the attending doctor — bring this form to the hospital</p>
+                        <flux:text size="sm">To be completed by the attending doctor — bring this form to the hospital</flux:text>
                         @elseif ($doc->document_type === 'fwhs_checklist')
-                        <p class="text-xs text-zinc-500 dark:text-zinc-400">Download, tick all items, and include with your submission</p>
+                        <flux:text size="sm">Download, tick all items, and include with your submission</flux:text>
                         @else
-                        <p class="text-xs text-zinc-500 dark:text-zinc-400">Pre-filled with your details — complete Section III (Reporter) and sign before submitting</p>
+                        <flux:text size="sm">Pre-filled with your details — complete Section III (Reporter) and sign before submitting</flux:text>
                         @endif
                     </div>
                 </div>
                 @if ($doc->file_path && !in_array($doc->document_type, ['accident_fcl', 'non_accident_fcl']))
-                <flux:button wire:click="downloadDoc({{ $doc->id }})" size="sm" variant="filled" icon="arrow-down-tray">Download</flux:button>
+                <flux:button wire:click="downloadDoc({{ $doc->id }})" size="sm" variant="filled" icon="arrow-down-tray" class="w-full sm:w-auto">Download</flux:button>
                 @elseif (in_array($doc->document_type, ['accident_fcl', 'non_accident_fcl']))
-                <flux:button wire:click="downloadFcl" size="sm" variant="filled" icon="arrow-down-tray">Download</flux:button>
+                <flux:button wire:click="downloadFcl" size="sm" variant="filled" icon="arrow-down-tray" class="w-full sm:w-auto">Download</flux:button>
                 @else
-                <flux:button size="sm" variant="outline" icon="arrow-down-tray" disabled>No File</flux:button>
+                <flux:button size="sm" variant="outline" icon="arrow-down-tray" disabled class="w-full sm:w-auto">No File</flux:button>
                 @endif
-            </div>
+            </flux:card>
             @endforeach
         </div>
         @endif
@@ -343,56 +347,40 @@
         </p>
         <div class="space-y-2 mb-6">
             @foreach ($submitDocs as $doc)
-            <div class="flex items-center gap-3 border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
-                <div class="w-9 h-9 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
-                    <flux:icon.document-text class="w-5 h-5 text-zinc-500 dark:text-zinc-400" />
+            <flux:card class="flex items-center gap-3 dark:bg-zinc-900 py-4">
+                <!-- <flux:icon.document-text class="w-5 h-5 text-zinc-500 dark:text-zinc-400 shrink-0" /> -->
+                <div class="w-9 h-9 bg-yellow-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
+                    <flux:icon.document-text class="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                 </div>
                 <div>
-                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->label }}</p>
-                    <p class="text-xs text-zinc-500 dark:text-zinc-400">
-                        {{ $isEmployerManaged ? 'Send a scanned or digital copy to CLAB' : 'Please submit the original copy' }}
-                    </p>
+                    <p class="font-medium">{{ $doc->label }}</p>
+                    <flux:text size="sm">{{ $isEmployerManaged ? 'Send a scanned or digital copy to CLAB' : 'Please submit the original copy' }}</flux:text>
                 </div>
-            </div>
+            </flux:card>
             @endforeach
         </div>
         @endif
 
         {{-- Submission Instructions --}}
         @if ($isEmployerManaged)
-        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <div class="flex items-start gap-3">
-                <flux:icon.envelope class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
-                <div>
-                    <p class="font-semibold text-blue-800 dark:text-blue-300 mb-1">Send Digital Copies To CLAB:</p>
-                    <p class="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
-                        Please upload all digital copies via the claim detail page after submission.
-                    </p>
-                </div>
-            </div>
-        </div>
-        <flux:text class="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-            Once submitted, CLAB will review your claim. Remember to also submit the claim directly to <strong>{{ $insurerLabel }}</strong> and update the status via the claim detail page.
-        </flux:text>
+        <flux:callout icon="envelope" color="lime">
+            <flux:callout.heading>Send Digital Copies To CLAB</flux:callout.heading>
+            <flux:callout.text>
+                Please upload all digital copies via the claim detail page after submission. Once submitted, CLAB will review your claim. Remember to also submit the claim directly to <strong>{{ $insurerLabel }}</strong> and update the status via the claim detail page.
+            </flux:callout.text>
+        </flux:callout>
         @else
-        <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-            <div class="flex items-start gap-3">
-                <flux:icon.map-pin class="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                <div>
-                    <p class="font-semibold text-amber-800 dark:text-amber-300 mb-1">Send Completed Documents To:</p>
-                    <p class="text-sm text-amber-700 dark:text-amber-400 leading-relaxed">
-                        Construction Labour Exchange Centre Berhad (CLAB)<br>
-                        Level 2, Annexe Block, Menara Milenium,<br>
-                        No. 8, Jalan Damanlela,<br>
-                        Pusat Bandar Damansara,<br>
-                        50490 Kuala Lumpur.
-                    </p>
-                </div>
-            </div>
-        </div>
-        <flux:text class="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-            Once submitted, our admin team will process your claim and mark each document as received upon arrival.
-        </flux:text>
+        <flux:callout icon="map-pin" color="lime">
+            <flux:callout.heading>Send Completed Documents To</flux:callout.heading>
+            <flux:callout.text>
+                Construction Labour Exchange Centre Berhad (CLAB)<br>
+                Level 2, Annexe Block, Menara Milenium,<br>
+                No. 8, Jalan Damanlela,<br>
+                Pusat Bandar Damansara,<br>
+                50490 Kuala Lumpur.<br><br>
+                Once submitted, our admin team will process your claim and mark each document as received upon arrival.
+            </flux:callout.text>
+        </flux:callout>
         @endif
         @endif
 
