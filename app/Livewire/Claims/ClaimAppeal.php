@@ -206,18 +206,7 @@ class ClaimAppeal extends Component
                 'facility_meals'          => $this->facilityMeals !== '' ? (bool) $this->facilityMeals : null,
                 'facility_accommodation'  => $this->facilityAccommodation !== '' ? (bool) $this->facilityAccommodation : null,
                 'facility_transportation' => $this->facilityTransportation !== '' ? (bool) $this->facilityTransportation : null,
-                // Reset insurer decision for re-processing
-                'insurer_decision'           => null,
-                'insurer_decided_at'         => null,
-                'insurer_decided_by'         => null,
-                'insurer_approval_letter'    => null,
-                'insurer_rejection_reason'   => null,
-                'insurer_rejection_attachment' => null,
-                'submitted_to_insurer_at'    => null,
-                'submitted_to_insurer_by'    => null,
-                'documents_received_at'      => null,
-                'documents_received_by'      => null,
-                // Mark as appealed
+                // Mark as appealed — historical timestamps preserved intentionally for timeline
                 'appealed_at'   => now(),
                 'appeal_count'  => $this->claim->appeal_count + 1,
                 'submitted_at'  => now(),

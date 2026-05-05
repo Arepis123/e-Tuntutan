@@ -229,8 +229,19 @@
 
         {{-- Step 4: Documents --}}
         @if ($step === 4)
+        @php
+            $isEmployerManaged = $claim->isEmployerManaged();
+            $insurerLabel = match($claim->claim_type) { 'perkeso' => 'PERKESO', 'green_card' => 'CIDB', default => 'Liberty' };
+        @endphp
         <flux:heading size="lg" class="mb-1">Step 3: Supporting Documents</flux:heading>
+        @if ($isEmployerManaged)
+        <flux:text class="mb-6">
+            Upload any updated documents to support your appeal. Since you submit directly to <strong>{{ $insurerLabel }}</strong>,
+            CLAB only requires <strong>digital copies</strong> — please upload scanned or photographed versions below.
+        </flux:text>
+        @else
         <flux:text class="mb-6">Upload any updated documents to support your appeal. Previously submitted documents remain unless replaced.</flux:text>
+        @endif
 
         @if ($downloadableDocs->isNotEmpty())
         <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">Forms to Download & Complete</p>
@@ -241,7 +252,12 @@
                     <div class="w-9 h-9 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
                         <flux:icon.arrow-down-tray class="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->label }}</p>
+                    <div>
+                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->label }}</p>
+                        @if ($isEmployerManaged)
+                        <p class="text-xs text-zinc-500 dark:text-zinc-400">Download, complete, and upload a digital copy below</p>
+                        @endif
+                    </div>
                 </div>
                 @if ($doc->file_path)
                 <flux:button wire:click="downloadDoc({{ $doc->id }})" size="sm" variant="filled" icon="arrow-down-tray">Download</flux:button>
@@ -254,7 +270,9 @@
         @endif
 
         @if ($requiredDocs->isNotEmpty())
-        <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">Upload Documents</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">
+            {{ $isEmployerManaged ? 'Upload Digital Copies' : 'Upload Documents' }}
+        </p>
         <div class="space-y-4 mb-6">
             @foreach ($requiredDocs as $doc)
             @php $existing = $claim->documents->firstWhere('document_type', $doc->document_type); @endphp
@@ -268,7 +286,7 @@
                         @if ($existing?->file_path)
                         <p class="text-xs text-green-600 dark:text-green-400">Previously submitted — upload to replace</p>
                         @else
-                        <p class="text-xs text-zinc-400">No file uploaded yet</p>
+                        <p class="text-xs text-zinc-400">{{ $isEmployerManaged ? 'Upload digital/scanned copy' : 'No file uploaded yet' }}</p>
                         @endif
                     </div>
                 </div>
@@ -287,6 +305,21 @@
         </div>
         @endif
 
+        @if ($isEmployerManaged)
+        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+                <flux:icon.information-circle class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                <div>
+                    <p class="font-semibold text-blue-800 dark:text-blue-300 mb-1">Digital Copies Only</p>
+                    <p class="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
+                        CLAB does not require original documents for {{ $insurerLabel }} claims. Please upload scanned or
+                        digital copies above. After resubmitting, remember to also submit your appeal directly to
+                        <strong>{{ $insurerLabel }}</strong> and update the status via the claim detail page.
+                    </p>
+                </div>
+            </div>
+        </div>
+        @else
         <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
             <div class="flex items-start gap-3">
                 <flux:icon.map-pin class="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
@@ -302,6 +335,7 @@
                 </div>
             </div>
         </div>
+        @endif
         @endif
 
         </div>

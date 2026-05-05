@@ -142,6 +142,12 @@ class Claim extends Model
         };
     }
 
+    public function isEmployerManaged(): bool
+    {
+        return in_array($this->claim_type, ['perkeso', 'green_card'])
+            && $this->worker?->worker_type === 'existing';
+    }
+
     protected static function booted(): void
     {
         static::creating(function (Claim $claim) {

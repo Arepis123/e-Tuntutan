@@ -11,7 +11,10 @@ use App\Livewire\Users\UserList;
 use App\Livewire\Roles\RoleList;
 use App\Http\Controllers\FclFormController;
 use App\Livewire\Configuration\DocumentConfigPage;
+use App\Models\Claim;
+use App\Models\ClaimDocument;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -31,6 +34,25 @@ Route::middleware(['auth'])->group(function () {
 
     // Users (Admin)
     Route::get('/pengguna', UserList::class)->name('users.index')->middleware('can:users.manage');
+
+    // Claim document download
+    Route::get('/tuntutan/{claim}/documents/{document}/download', function (Claim $claim, ClaimDocument $document) {
+        $user = auth()->user();
+        abort_unless(
+            $user->hasAnyRole(['admin', 'pic']) || $user->id === $claim->user_id,
+            403
+        );
+        abort_if(! $document->path, 404);
+
+        $disk     = $document->disk ?? 'local';
+        $filename = $document->original_filename ?? basename($document->path);
+
+        if (request()->boolean('inline')) {
+            return Storage::disk($disk)->response($document->path, $filename);
+        }
+
+        return Storage::disk($disk)->download($document->path, $filename);
+    })->name('claims.documents.download');
 
     // FCL Form PDF download
     Route::post('/tuntutan/fcl-form/download', [FclFormController::class, 'download'])->name('claims.fcl.download');

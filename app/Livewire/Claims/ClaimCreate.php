@@ -34,6 +34,19 @@ class ClaimCreate extends Component
         }
     }
 
+    public function updatedWorkingHourFrom(?string $value): void
+    {
+        if (! $value) return;
+
+        try {
+            $this->workingHourTo = \Carbon\Carbon::createFromFormat('H:i', $value)
+                ->addHours(9)
+                ->format('H:i');
+        } catch (\Exception) {
+            // invalid time format — leave workingHourTo unchanged
+        }
+    }
+
     // Step 2: Worker info
     public string $passportNumber = '';
     public ?array $foundWorker = null;

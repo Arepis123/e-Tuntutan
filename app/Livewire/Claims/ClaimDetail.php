@@ -41,6 +41,7 @@ class ClaimDetail extends Component
 
     public $newDocument;
     public string $newDocumentType = '';
+    public array $clientUploadFiles = [];
 
     public function mount(Claim $claim): void
     {
@@ -147,6 +148,17 @@ class ClaimDetail extends Component
         $this->claim->refresh();
     }
 
+    protected function authorizeInsurerStep(): void
+    {
+        $this->claim->loadMissing('worker');
+
+        if ($this->claim->isEmployerManaged()) {
+            abort_unless(Auth::id() === $this->claim->user_id, 403);
+        } else {
+            $this->authorize('claims.approve');
+        }
+    }
+
     public function openInsurerApprovedModal(): void
     {
         $this->insurerApprovalLetter  = null;
@@ -163,6 +175,8 @@ class ClaimDetail extends Component
 
     public function confirmInsurerApproved(): void
     {
+        $this->authorizeInsurerStep();
+
         $this->validate([
             'insurerApprovalLetter' => 'required|file|mimes:pdf|max:10240',
             'insurerPaymentChannel' => 'required|in:clab,contractor',
@@ -178,17 +192,24 @@ class ClaimDetail extends Component
             'payment_channel'         => $this->insurerPaymentChannel,
         ]);
 
-        if ($this->claim->user) {
+        if ($this->claim->isEmployerManaged()) {
+            $this->notifyStatusChange();
+        } elseif ($this->claim->user) {
             $this->claim->user->notify(new \App\Notifications\InsurerDecisionNotification($this->claim));
         }
 
         $this->claim->refresh();
         $this->modal('insurer-approved')->close();
-        $this->dispatch('notify', message: 'Decision recorded and contractor notified.');
+        $this->dispatch('notify', message: $this->claim->isEmployerManaged()
+            ? 'Decision recorded. Admin has been notified.'
+            : 'Decision recorded and contractor notified.'
+        );
     }
 
     public function confirmInsurerRejected(): void
     {
+        $this->authorizeInsurerStep();
+
         $this->validate([
             'insurerRejectionReason'    => 'required|string|min:5',
             'insurerRejectionAttachment' => 'nullable|file|mimes:pdf|max:10240',
@@ -207,28 +228,43 @@ class ClaimDetail extends Component
 
         $this->claim->update($updates);
 
-        if ($this->claim->user) {
+        if ($this->claim->isEmployerManaged()) {
+            $this->notifyStatusChange();
+        } elseif ($this->claim->user) {
             $this->claim->user->notify(new \App\Notifications\InsurerDecisionNotification($this->claim));
         }
 
         $this->claim->refresh();
         $this->modal('insurer-rejected')->close();
-        $this->dispatch('notify', message: 'Decision recorded and contractor notified.');
+        $this->dispatch('notify', message: $this->claim->isEmployerManaged()
+            ? 'Decision recorded. Admin has been notified.'
+            : 'Decision recorded and contractor notified.'
+        );
     }
 
     public function openInsurerModal(): void
     {
+        $this->authorize('claims.approve');
         $this->modal('insurer-submission')->show();
     }
 
-    public function confirmSubmittedToInsurer(bool $notifyContractor): void
+    public function openEmployerSubmissionModal(): void
     {
+        $this->claim->loadMissing('worker');
+        abort_unless(Auth::id() === $this->claim->user_id && $this->claim->isEmployerManaged(), 403);
+        $this->modal('employer-insurer-submission')->show();
+    }
+
+    public function confirmSubmittedToInsurer(bool $notifyContractor = false): void
+    {
+        $this->authorizeInsurerStep();
+
         $this->claim->update([
             'submitted_to_insurer_at' => now(),
             'submitted_to_insurer_by' => Auth::id(),
         ]);
 
-        if ($notifyContractor && $this->claim->user) {
+        if ($notifyContractor && ! $this->claim->isEmployerManaged() && $this->claim->user) {
             $this->claim->user->notify(
                 new \App\Notifications\ClaimSubmittedToInsurerNotification($this->claim)
             );
@@ -236,9 +272,10 @@ class ClaimDetail extends Component
 
         $this->claim->refresh();
         $this->modal('insurer-submission')->close();
+        $this->modal('employer-insurer-submission')->close();
         $this->dispatch('notify', message: $notifyContractor
             ? 'Recorded and notification sent to contractor.'
-            : 'Recorded. No notification sent.'
+            : 'Recorded.'
         );
     }
 
@@ -264,7 +301,10 @@ class ClaimDetail extends Component
                 'received_by' => Auth::id(),
             ]);
 
-        if (! $this->claim->documents_received_at) {
+        $isNewRound = $this->claim->appealed_at && $this->claim->documents_received_at
+            && $this->claim->appealed_at > $this->claim->documents_received_at;
+
+        if (! $this->claim->documents_received_at || $isNewRound) {
             $this->claim->update([
                 'documents_received_at' => $now,
                 'documents_received_by' => Auth::id(),
@@ -351,7 +391,10 @@ class ClaimDetail extends Component
 
         $allReceived = $this->claim->documents()->where('is_received', false)->doesntExist();
 
-        if ($allReceived && ! $this->claim->documents_received_at) {
+        $isNewRound = $this->claim->appealed_at && $this->claim->documents_received_at
+            && $this->claim->appealed_at > $this->claim->documents_received_at;
+
+        if ($allReceived && (! $this->claim->documents_received_at || $isNewRound)) {
             $this->claim->update([
                 'documents_received_at' => now(),
                 'documents_received_by' => Auth::id(),
@@ -384,6 +427,88 @@ class ClaimDetail extends Component
         $this->claim->refresh();
     }
 
+    protected function getDocumentConfigs(): \Illuminate\Support\Collection
+    {
+        if (! $this->claim->claim_type || ! $this->claim->claim_category) {
+            return collect();
+        }
+
+        $incidentType = $this->claim->claim_category === 'death' ? null : ($this->claim->incident_type ?: null);
+
+        return \App\Models\DocumentConfig::where('claim_type', $this->claim->claim_type)
+            ->where('claim_category', $this->claim->claim_category)
+            ->where('incident_type', $incidentType)
+            ->orderBy('sort_order')
+            ->get();
+    }
+
+    public function updatedClientUploadFiles($value, string $key): void
+    {
+        if ($value) {
+            $this->uploadClientDoc($key);
+        }
+    }
+
+    public function uploadClientDoc(string $docType): void
+    {
+        abort_unless(Auth::id() === $this->claim->user_id, 403);
+
+        $file = $this->clientUploadFiles[$docType] ?? null;
+
+        if (! $file) {
+            $this->addError("clientUploadFiles.{$docType}", 'Please select a file to upload.');
+            return;
+        }
+
+        $this->validate([
+            "clientUploadFiles.{$docType}" => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png',
+        ]);
+
+        // Capture metadata before store() moves the temp file (after move getSize() throws)
+        $originalName = $file->getClientOriginalName();
+        $mimeType     = $file->getMimeType();
+        $fileSize     = $file->getSize();
+
+        $path = $file->store("claims/{$this->claim->id}/documents", 'local');
+
+        if (! $path) {
+            $this->addError("clientUploadFiles.{$docType}", 'File could not be saved. Please try again.');
+            return;
+        }
+
+        $existing = $this->claim->documents()->where('document_type', $docType)->first();
+
+        if ($existing) {
+            $existing->update([
+                'original_filename' => $originalName,
+                'stored_filename'   => basename($path),
+                'disk'              => 'local',
+                'path'              => $path,
+                'file_size'         => $fileSize,
+                'mime_type'         => $mimeType,
+                'uploaded_by'       => Auth::id(),
+                'is_received'       => false,
+                'received_at'       => null,
+                'received_by'       => null,
+            ]);
+        } else {
+            $this->claim->documents()->create([
+                'document_type'     => $docType,
+                'original_filename' => $originalName,
+                'stored_filename'   => basename($path),
+                'disk'              => 'local',
+                'path'              => $path,
+                'file_size'         => $fileSize,
+                'mime_type'         => $mimeType,
+                'uploaded_by'       => Auth::id(),
+            ]);
+        }
+
+        $this->reset('clientUploadFiles');
+        $this->claim->load('documents');
+        $this->dispatch('notify', message: 'Document uploaded successfully.');
+    }
+
     protected function notifyStatusChange(): void
     {
         $pics = \App\Models\User::role('pic')->get();
@@ -393,7 +518,8 @@ class ClaimDetail extends Component
     public function render()
     {
         $this->claim->load(['worker', 'user', 'documents', 'claimNotes.user', 'payment']);
+        $docConfigs = $this->getDocumentConfigs();
 
-        return view('livewire.claims.claim-detail');
+        return view('livewire.claims.claim-detail', compact('docConfigs'));
     }
 }

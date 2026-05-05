@@ -4,7 +4,14 @@
             <div class="flex items-center gap-3 mb-1">
                 <flux:heading size="xl">{{ $claim->claim_number }}</flux:heading>
             </div>
-            <flux:subheading>{{ $claim->getClaimTypeLabel() }} — {{ $claim->claim_category === 'hospitalization' ? 'Hospitalization' : 'Death' }}</flux:subheading>
+            <div class="flex items-center gap-2">
+                <flux:subheading>{{ $claim->getClaimTypeLabel() }} — {{ $claim->claim_category === 'hospitalization' ? 'Hospitalization' : 'Death' }}</flux:subheading>
+                @if (auth()->user()->hasRole('employer'))
+                <flux:badge color="{{ match($claim->status) { 'open' => 'red', 'in_progress' => 'yellow', 'closed' => 'emerald', default => 'zinc' } }}" size="sm">
+                    {{ match($claim->status) { 'open' => 'Open', 'in_progress' => 'In Progress', 'closed' => 'Closed', default => ucfirst($claim->status) } }}
+                </flux:badge>
+                @endif
+            </div>
         </div>
 
         @if ($claim->insurer_decision === 'rejected' && $claim->user_id === auth()->id() && auth()->user()->hasRole('employer') && $claim->appeal_count === 0)
@@ -17,7 +24,7 @@
         <flux:dropdown>
             <flux:button
                 icon:trailing="chevron-down"
-                icon="{{ match($claim->status) { 'open' => 'envelope-open', 'in_progress' => 'clock', 'closed' => 'archive-box', default => 'arrow-path' } }}"                
+                icon="{{ match($claim->status) { 'open' => 'envelope-open', 'in_progress' => 'clock', 'closed' => 'archive-box', default => 'arrow-path' } }}"
                 color="{{ match($claim->status) { 'open' => 'red', 'in_progress' => 'yellow', 'closed' => 'emerald', default => '' } }}"
                 variant="primary"
                 >
@@ -297,11 +304,12 @@
             </flux:card>
 
             {{-- Documents --}}
+            @if (auth()->user()->hasAnyRole(['admin', 'pic']))
             <flux:card class="dark:bg-zinc-900">
                 <div class="flex items-start justify-between mb-4">
                     <div>
                         <flux:heading size="lg" class="mb-1">Required Documents</flux:heading>
-                        <flux:text class="text-sm">Mark each document as received when the physical copy arrives.</flux:text>
+                        <flux:text class="text-sm">Mark each document as received when the copy arrives (physical or digital).</flux:text>
                     </div>
                     @can('claims.approve')
                     <flux:dropdown position="bottom" align="end">
@@ -338,9 +346,18 @@
                                                 Received on {{ $doc->received_at->format('d/m/Y H:i') }}
                                                 @if($doc->receiver) by {{ $doc->receiver->name }} @endif
                                             </p>
+                                            @if ($doc->original_filename)
+                                            <p class="text-xs text-zinc-400 mt-0.5">{{ $doc->original_filename }}</p>
+                                            @endif
                                         </div>
                                     </div>
-                                    <flux:badge  size="sm">Received</flux:badge>
+                                    <div class="flex items-center gap-2">
+                                        @if ($doc->path)
+                                        <flux:button :href="route('claims.documents.download', [$claim, $doc]) . '?inline=1'" target="_blank" size="sm" variant="ghost" icon="eye" />
+                                        <flux:button :href="route('claims.documents.download', [$claim, $doc])" size="sm" variant="ghost" icon="arrow-down-tray" />
+                                        @endif
+                                        <flux:badge size="sm">Received</flux:badge>
+                                    </div>
                                 </div>
                                 @endforeach
                             </div>
@@ -368,24 +385,35 @@
                                     @if($doc->receiver) by {{ $doc->receiver->name }} @endif
                                 </p>
                                 @else
-                                <p class="text-xs text-zinc-400">Awaiting physical document</p>
+                                <p class="text-xs text-zinc-400">
+                                    {{ $doc->path ? 'Uploaded — awaiting confirmation' : 'Awaiting document' }}
+                                </p>
+                                @endif
+                                @if ($doc->original_filename)
+                                <p class="text-xs text-zinc-400 mt-0.5">{{ $doc->original_filename }}</p>
                                 @endif
                             </div>
                         </div>
-                        @if (!$doc->is_received)
-                        @can('claims.approve')
-                        <flux:button
-                            wire:click="markDocumentReceived({{ $doc->id }})"
-                            size="sm"
-                            variant="ghost"
-                            icon="check"
-                        >
-                            Mark Received
-                        </flux:button>
-                        @endcan
-                        @else
-                        <flux:badge  size="sm">Received</flux:badge>
-                        @endif
+                        <div class="flex items-center gap-2">
+                            @if ($doc->path)
+                            <flux:button :href="route('claims.documents.download', [$claim, $doc]) . '?inline=1'" target="_blank" size="sm" variant="ghost" icon="eye" />
+                            <flux:button :href="route('claims.documents.download', [$claim, $doc])" size="sm" variant="ghost" icon="arrow-down-tray" />
+                            @endif
+                            @if (!$doc->is_received)
+                            @can('claims.approve')
+                            <flux:button
+                                wire:click="markDocumentReceived({{ $doc->id }})"
+                                size="sm"
+                                variant="ghost"
+                                icon="check"
+                            >
+                                Mark Received
+                            </flux:button>
+                            @endcan
+                            @else
+                            <flux:badge size="sm">Received</flux:badge>
+                            @endif
+                        </div>
                     </div>
                     @endforeach
                 </div>
@@ -394,6 +422,116 @@
                 <p class="text-sm text-zinc-400">No documents tracked yet.</p>
                 @endif
             </flux:card>
+            @endif
+
+            {{-- Client Document Upload --}}
+            @if (auth()->user()->hasRole('employer') && $claim->user_id === auth()->id())
+            @php
+                $requiredDocs   = $docConfigs->where('is_required', true);
+                $uploadedDocs   = $claim->documents->filter(fn($d) => $d->path);
+                $showClientCard = $requiredDocs->isNotEmpty() || $uploadedDocs->isNotEmpty();
+            @endphp
+            @if ($showClientCard)
+            <flux:card class="dark:bg-zinc-900">
+                <flux:heading size="lg" class="mb-1">Documents</flux:heading>
+                @if ($claim->isEmployerManaged())
+                <flux:text class="text-sm mb-4">Upload digital copies of the required documents for CLAB's records.</flux:text>
+                @else
+                <flux:text class="text-sm mb-4">Upload the required documents below. CLAB will review and confirm receipt.</flux:text>
+                @endif
+
+                {{-- Required documents from config --}}
+                @if ($requiredDocs->isNotEmpty())
+                <div class="space-y-4">
+                    @foreach ($requiredDocs as $doc)
+                    @php $uploaded = $claim->documents->firstWhere('document_type', $doc->document_type); @endphp
+                    <div class="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
+                        <div class="flex items-center gap-3 mb-3">
+                            @if ($uploaded)
+                            <flux:icon.check-circle class="w-5 h-5 text-green-500 shrink-0" />
+                            @else
+                            <flux:icon.clock class="w-5 h-5 text-zinc-400 shrink-0" />
+                            @endif
+                            <div>
+                                <p class="text-sm font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->label }}</p>
+                                @if ($uploaded)
+                                <p class="text-xs text-green-600 dark:text-green-400">
+                                    {{ $uploaded->original_filename }}
+                                    @if ($uploaded->is_received)
+                                    &nbsp;·&nbsp;<span class="font-medium">Received by CLAB</span>
+                                    @endif
+                                </p>
+                                @else
+                                <p class="text-xs text-zinc-400">Not yet uploaded</p>
+                                @endif
+                            </div>
+                        </div>
+                        <flux:error name="clientUploadFiles.{{ $doc->document_type }}" class="mt-2" />
+                        <div class="flex items-center gap-2 mt-2">
+                            <input
+                                type="file"
+                                wire:model="clientUploadFiles.{{ $doc->document_type }}"
+                                wire:loading.attr="disabled"
+                                wire:target="clientUploadFiles.{{ $doc->document_type }}"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                class="block flex-1 text-sm text-zinc-700 dark:text-zinc-300
+                                       file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0
+                                       file:text-sm file:font-medium file:bg-zinc-100 file:text-zinc-700
+                                       dark:file:bg-zinc-800 dark:file:text-zinc-300
+                                       hover:file:bg-zinc-200 dark:hover:file:bg-zinc-700
+                                       disabled:opacity-50 disabled:cursor-not-allowed"
+                            />
+                            @if ($uploaded?->path)
+                            <flux:button :href="route('claims.documents.download', [$claim, $uploaded]) . '?inline=1'" target="_blank" size="sm" variant="ghost" icon="eye" />
+                            <flux:button :href="route('claims.documents.download', [$claim, $uploaded])" size="sm" variant="ghost" icon="arrow-down-tray" />
+                            @endif
+                        </div>
+                        <div wire:loading wire:target="clientUploadFiles.{{ $doc->document_type }}" class="text-xs text-blue-500 mt-1">
+                            Uploading, please wait…
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+                @endif
+
+                {{-- Uploaded documents not covered by config (always visible) --}}
+                @php
+                    $configuredTypes = $requiredDocs->pluck('document_type')->toArray();
+                    $extraUploads    = $uploadedDocs->filter(fn($d) => ! in_array($d->document_type, $configuredTypes));
+                @endphp
+                @if ($extraUploads->isNotEmpty())
+                <div class="{{ $requiredDocs->isNotEmpty() ? 'mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700' : '' }}">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-3">Uploaded Files</p>
+                    <div class="space-y-2">
+                        @foreach ($extraUploads as $doc)
+                        <div class="flex items-center justify-between gap-3 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <flux:icon.document class="w-4 h-4 text-zinc-400 shrink-0" />
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">{{ $doc->original_filename }}</p>
+                                    <p class="text-xs text-zinc-400">{{ $doc->document_type }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                @if ($doc->is_received)
+                                <flux:badge color="green" size="sm">Received</flux:badge>
+                                @endif
+                                <flux:button :href="route('claims.documents.download', [$claim, $doc]) . '?inline=1'" target="_blank" size="sm" variant="ghost" icon="eye" />
+                                <flux:button :href="route('claims.documents.download', [$claim, $doc])" size="sm" variant="ghost" icon="arrow-down-tray" />
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                {{-- No docs uploaded yet and no config --}}
+                @if ($requiredDocs->isEmpty() && $uploadedDocs->isEmpty())
+                <p class="text-sm text-zinc-400">No documents uploaded yet.</p>
+                @endif
+            </flux:card>
+            @endif
+            @endif
 
             {{-- Notes --}}
             <flux:card class="dark:bg-zinc-900">
@@ -401,7 +539,7 @@
 
                 <div class="space-y-3 mb-4">
                     @forelse ($claim->claimNotes->sortByDesc('created_at') as $note)
-                    @if (!$note->is_internal || auth()->user()->hasAnyRole(['admin','pic']))
+                    @if (!$note->is_internal || auth()->user()->hasAnyRole(['admin','pic']) || $note->user_id === auth()->id())
                     <div class="p-3 rounded-lg {{ $note->is_internal ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800' : 'bg-zinc-50 dark:bg-zinc-800' }}">
                         <div class="flex items-center justify-between mb-1">
                             <span class="text-sm font-medium dark:text-white">{{ $note->user->name }}</span>
@@ -434,6 +572,7 @@
                     @endforelse
                 </div>
 
+                @if (auth()->user()->hasAnyRole(['admin','pic']) || $claim->status !== 'closed')
                 <div class="border-t border-zinc-200 dark:border-zinc-700 pt-4 space-y-3">
                     <flux:textarea wire:model="newNote" placeholder="Add a note..." rows="3" />
                     <div>
@@ -463,6 +602,11 @@
                     @endif
                     <flux:button wire:click="addNote" size="sm" icon="chat-bubble-left">Add Note</flux:button>
                 </div>
+                @else
+                <div class="border-t border-zinc-200 dark:border-zinc-700 pt-4">
+                    <flux:text class="text-sm text-zinc-400">This claim is closed. No further notes can be added.</flux:text>
+                </div>
+                @endif
             </flux:card>
         </div>
 
@@ -484,7 +628,45 @@
                         </flux:timeline.content>
                     </flux:timeline.item>
 
-                    @if ($claim->documents_received_at)
+                    {{-- PIC approval / rejection happen before documents are received --}}
+                    @if ($claim->approved_at)
+                    <flux:timeline.item>
+                        <flux:timeline.indicator>
+                            <flux:icon.check variant="micro" />
+                        </flux:timeline.indicator>
+                        <flux:timeline.content>
+                            <div class="flex items-center justify-between">
+                                <flux:heading>Approved by PIC</flux:heading>
+                                <flux:text class="text-xs text-zinc-400">{{ $claim->approved_at->format('M j, g:i A') }}</flux:text>
+                            </div>
+                        </flux:timeline.content>
+                    </flux:timeline.item>
+                    @endif
+
+                    @if ($claim->rejected_at)
+                    <flux:timeline.item>
+                        <flux:timeline.indicator>
+                            <flux:icon.x-mark variant="micro" />
+                        </flux:timeline.indicator>
+                        <flux:timeline.content>
+                            <div class="flex items-center justify-between">
+                                <flux:heading>Rejected by PIC</flux:heading>
+                                <flux:text class="text-xs text-zinc-400">{{ $claim->rejected_at->format('M j, g:i A') }}</flux:text>
+                            </div>
+                            @if ($claim->rejection_reason)
+                            <flux:text class="text-xs mt-0.5">{{ $claim->rejection_reason }}</flux:text>
+                            @endif
+                        </flux:timeline.content>
+                    </flux:timeline.item>
+                    @endif
+
+                    @php
+                        // Items before the appeal (or all items if no appeal)
+                        $appealed = $claim->appealed_at;
+                    @endphp
+
+                    {{-- Pre-appeal: Documents Received --}}
+                    @if ($claim->documents_received_at && (!$appealed || $claim->documents_received_at <= $appealed))
                     <flux:timeline.item>
                         <flux:timeline.indicator>
                             <flux:icon.check-check variant="micro" />
@@ -501,7 +683,8 @@
                     </flux:timeline.item>
                     @endif
 
-                    @if ($claim->submitted_to_insurer_at)
+                    {{-- Pre-appeal: Submitted to Insurer --}}
+                    @if ($claim->submitted_to_insurer_at && (!$appealed || $claim->submitted_to_insurer_at <= $appealed))
                     <flux:timeline.item>
                         <flux:timeline.indicator>
                             <flux:icon.send-horizontal variant="micro" />
@@ -518,7 +701,8 @@
                     </flux:timeline.item>
                     @endif
 
-                    @if ($claim->insurer_decision)
+                    {{-- Pre-appeal: Insurer Decision --}}
+                    @if ($claim->insurer_decision && (!$appealed || $claim->insurer_decided_at <= $appealed))
                     <flux:timeline.item>
                         <flux:timeline.indicator>
                             @if ($claim->insurer_decision === 'approved')
@@ -547,7 +731,8 @@
                     </flux:timeline.item>
                     @endif
 
-                    @if ($claim->appealed_at)
+                    {{-- Appeal marker --}}
+                    @if ($appealed)
                     <flux:timeline.item>
                         <flux:timeline.indicator>
                             <flux:icon.arrow-path variant="micro" />
@@ -555,46 +740,81 @@
                         <flux:timeline.content>
                             <div class="flex items-center justify-between">
                                 <flux:heading>Appeal #{{ $claim->appeal_count }} Submitted</flux:heading>
-                                <flux:text class="text-xs text-zinc-400">{{ $claim->appealed_at->format('M j, g:i A') }}</flux:text>
+                                <flux:text class="text-xs text-zinc-400">{{ $appealed->format('M j, g:i A') }}</flux:text>
                             </div>
                         </flux:timeline.content>
                     </flux:timeline.item>
-                    @endif
 
-                    @if ($claim->approved_at)
+                    {{-- Post-appeal: Documents Received --}}
+                    @if ($claim->documents_received_at && $claim->documents_received_at > $appealed)
                     <flux:timeline.item>
                         <flux:timeline.indicator>
-                            <flux:icon.check variant="micro" />
+                            <flux:icon.check-check variant="micro" />
                         </flux:timeline.indicator>
                         <flux:timeline.content>
                             <div class="flex items-center justify-between">
-                                <flux:heading>Approved</flux:heading>
-                                <flux:text class="text-xs text-zinc-400">{{ $claim->approved_at->format('M j, g:i A') }}</flux:text>
+                                <flux:heading>All Documents Received</flux:heading>
+                                <flux:text class="text-xs text-zinc-400">{{ $claim->documents_received_at->format('M j, g:i A') }}</flux:text>
                             </div>
-                        </flux:timeline.content>
-                    </flux:timeline.item>
-                    @endif
-
-                    @if ($claim->rejected_at)
-                    <flux:timeline.item>
-                        <flux:timeline.indicator>
-                            <flux:icon.x-mark variant="micro" />
-                        </flux:timeline.indicator>
-                        <flux:timeline.content>
-                            <div class="flex items-center justify-between">
-                                <flux:heading>Rejected</flux:heading>
-                                <flux:text class="text-xs text-zinc-400">{{ $claim->rejected_at->format('M j, g:i A') }}</flux:text>
-                            </div>
-                            @if ($claim->rejection_reason)
-                            <flux:text class="text-xs mt-0.5">{{ $claim->rejection_reason }}</flux:text>
+                            @if ($claim->documentsReceivedBy)
+                            <flux:text class="text-xs mt-0.5">Verified by {{ $claim->documentsReceivedBy->name }}</flux:text>
                             @endif
                         </flux:timeline.content>
                     </flux:timeline.item>
                     @endif
 
+                    {{-- Post-appeal: Submitted to Insurer --}}
+                    @if ($claim->submitted_to_insurer_at && $claim->submitted_to_insurer_at > $appealed)
+                    <flux:timeline.item>
+                        <flux:timeline.indicator>
+                            <flux:icon.send-horizontal variant="micro" />
+                        </flux:timeline.indicator>
+                        <flux:timeline.content>
+                            <div class="flex items-center justify-between">
+                                <flux:heading>Resubmitted to Insurer</flux:heading>
+                                <flux:text class="text-xs text-zinc-400">{{ $claim->submitted_to_insurer_at->format('M j, g:i A') }}</flux:text>
+                            </div>
+                            @if ($claim->submittedToInsurerBy)
+                            <flux:text class="text-xs mt-0.5">By {{ $claim->submittedToInsurerBy->name }}</flux:text>
+                            @endif
+                        </flux:timeline.content>
+                    </flux:timeline.item>
+                    @endif
+
+                    {{-- Post-appeal: Insurer Decision --}}
+                    @if ($claim->insurer_decision && $claim->insurer_decided_at > $appealed)
+                    <flux:timeline.item>
+                        <flux:timeline.indicator>
+                            @if ($claim->insurer_decision === 'approved')
+                                <flux:icon.circle-check variant="micro" />
+                            @else
+                                <flux:icon.x variant="micro" />
+                            @endif
+                        </flux:timeline.indicator>
+                        <flux:timeline.content>
+                            <div class="flex items-center justify-between">
+                                <flux:heading>Insurer {{ $claim->insurer_decision === 'approved' ? 'Approved' : 'Rejected' }} (Appeal)</flux:heading>
+                                <flux:text class="text-xs text-zinc-400">{{ $claim->insurer_decided_at->format('M j, g:i A') }}</flux:text>
+                            </div>
+                            @if ($claim->insurerDecidedBy)
+                            <flux:text class="text-xs mt-0.5">Recorded by {{ $claim->insurerDecidedBy->name }}</flux:text>
+                            @endif
+                            @if ($claim->insurer_decision === 'approved' && $claim->payment_channel)
+                            <flux:text class="text-xs mt-0.5">
+                                Payment channel: <strong>{{ $claim->payment_channel === 'clab' ? 'Transfer to CLAB' : 'Transfer to Contractor' }}</strong>
+                            </flux:text>
+                            @endif
+                            @if ($claim->insurer_decision === 'rejected' && $claim->insurer_rejection_reason)
+                            <flux:text class="text-xs mt-0.5 text-red-500">{{ $claim->insurer_rejection_reason }}</flux:text>
+                            @endif
+                        </flux:timeline.content>
+                    </flux:timeline.item>
+                    @endif
+                    @endif
+
                     @if ($claim->closed_at)
                     <flux:timeline.item>
-                        <flux:timeline.indicator >
+                        <flux:timeline.indicator>
                             <flux:icon.archive-box variant="micro" />
                         </flux:timeline.indicator>
                         <flux:timeline.content>
@@ -608,53 +828,112 @@
                 </flux:timeline>
             </flux:card>
 
-            {{-- Insurer Submission Prompt --}}
-            @if ($claim->documents_received_at && ! $claim->submitted_to_insurer_at)
-            <style>
-                @keyframes blink3 { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-                .blink-3 { animation: blink3 0.6s ease-in-out 3; }
-            </style>
-            <flux:card class="blink-3 dark:bg-zinc-900 border border-amber-300 dark:border-amber-700">
-                <div class="flex items-start gap-4">
-                    <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/30 shrink-0">
-                        <flux:icon.exclamation-triangle class="w-5 h-5 text-amber-500" />
-                    </div>
-                    <div class="flex-1">
-                        <flux:heading size="md" class="mb-1">Pending: Submit to Insurer</flux:heading>
-                        <flux:text class="text-sm mb-4">Have you submitted this claim application to the insurance provider (Liberty)?</flux:text>
-                        <flux:button wire:click="openInsurerModal" variant="primary" size="sm" icon="paper-airplane">
-                            Yes, I have submitted to Liberty
-                        </flux:button>
-                    </div>
-                </div>
-            </flux:card>
-            @endif
+            @php
+                $isEmployerManaged = $claim->isEmployerManaged();
+                $insurerLabel = match($claim->claim_type) { 'perkeso' => 'PERKESO', 'green_card' => 'CIDB', default => 'Liberty' };
+                // "needs redo" = no value yet, OR value predates last appeal
+                $needsSubmit  = ! $claim->submitted_to_insurer_at
+                    || ($claim->appealed_at && $claim->appealed_at > $claim->submitted_to_insurer_at);
+                // "current round submitted" = submitted AFTER last appeal (or no appeal)
+                $currentRoundSubmitted = $claim->submitted_to_insurer_at
+                    && (! $claim->appealed_at || $claim->submitted_to_insurer_at > $claim->appealed_at);
+                $needsDecision = $currentRoundSubmitted
+                    && (! $claim->insurer_decision || $claim->insurer_decided_at < $claim->submitted_to_insurer_at);
+                // Close prompt only when decision is from the current (post-last-appeal) round
+                $decisionIsCurrent = $claim->insurer_decision
+                    && (! $claim->appealed_at || $claim->insurer_decided_at > $claim->appealed_at);
+            @endphp
 
-            {{-- Insurer Decision Prompt --}}
-            @if ($claim->submitted_to_insurer_at && ! $claim->insurer_decision)
-            <flux:card class="dark:bg-zinc-900 border border-blue-300 dark:border-blue-700">
-                <div class="flex items-start gap-4">
-                    <div class="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 shrink-0">
-                        <flux:icon.scale variant="outline" class="w-5 h-5 text-blue-500" />
-                    </div>
-                    <div class="flex-1">
-                        <flux:heading size="md" class="mb-1">Pending: Insurer Decision</flux:heading>
-                        <flux:text class="text-sm mb-4">Has Liberty Insurance responded with a decision on this claim?</flux:text>
-                        <div class="flex gap-2">
-                            <flux:button wire:click="openInsurerApprovedModal" variant="primary" size="sm" icon="check">
-                                Approved
-                            </flux:button>
-                            <flux:button wire:click="openInsurerRejectedModal" variant="danger" size="sm" icon="x-mark">
-                                Not Approved
+            {{-- Insurer Submission Prompt --}}
+            @if ($needsSubmit)
+                @if ($isEmployerManaged && auth()->id() === $claim->user_id && $claim->approved_at)
+                <style>
+                    @keyframes blink3 { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+                    .blink-3 { animation: blink3 0.6s ease-in-out 3; }
+                </style>
+                <flux:card class="blink-3 dark:bg-zinc-900 border border-amber-300 dark:border-amber-700">
+                    <div class="flex items-start gap-4">
+                        <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/30 shrink-0">
+                            <flux:icon.exclamation-triangle class="w-5 h-5 text-amber-500" />
+                        </div>
+                        <div class="flex-1">
+                            <flux:heading size="md" class="mb-1">Action Required: Submit to {{ $insurerLabel }}</flux:heading>
+                            <flux:text class="text-sm mb-4">You are required to submit this claim directly to <strong>{{ $insurerLabel }}</strong>. Once submitted, please confirm below so CLAB can track the progress.</flux:text>
+                            <flux:button wire:click="openEmployerSubmissionModal" variant="primary" size="sm" icon="paper-airplane">
+                                Yes, I have submitted to {{ $insurerLabel }}
                             </flux:button>
                         </div>
                     </div>
-                </div>
-            </flux:card>
+                </flux:card>
+                @elseif (! $isEmployerManaged && auth()->user()->hasAnyRole(['admin', 'pic']) && $claim->documents_received_at)
+                <style>
+                    @keyframes blink3 { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+                    .blink-3 { animation: blink3 0.6s ease-in-out 3; }
+                </style>
+                <flux:card class="blink-3 dark:bg-zinc-900 border border-amber-300 dark:border-amber-700">
+                    <div class="flex items-start gap-4">
+                        <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/30 shrink-0">
+                            <flux:icon.exclamation-triangle class="w-5 h-5 text-amber-500" />
+                        </div>
+                        <div class="flex-1">
+                            <flux:heading size="md" class="mb-1">Pending: Submit to Insurer</flux:heading>
+                            <flux:text class="text-sm mb-4">Have you submitted this claim application to the insurance provider ({{ $insurerLabel }})?</flux:text>
+                            <flux:button wire:click="openInsurerModal" variant="primary" size="sm" icon="paper-airplane">
+                                Yes, I have submitted to {{ $insurerLabel }}
+                            </flux:button>
+                        </div>
+                    </div>
+                </flux:card>
+                @endif
+            @endif
+
+            {{-- Insurer Decision Prompt --}}
+            @if ($needsDecision)
+                @if ($isEmployerManaged && auth()->id() === $claim->user_id)
+                <flux:card class="dark:bg-zinc-900 border border-blue-300 dark:border-blue-700">
+                    <div class="flex items-start gap-4">
+                        <div class="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 shrink-0">
+                            <flux:icon.scale variant="outline" class="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div class="flex-1">
+                            <flux:heading size="md" class="mb-1">Update: {{ $insurerLabel }} Decision</flux:heading>
+                            <flux:text class="text-sm mb-4">Has <strong>{{ $insurerLabel }}</strong> responded with a decision on your claim application?</flux:text>
+                            <div class="flex gap-2">
+                                <flux:button wire:click="openInsurerApprovedModal" variant="primary" size="sm" icon="check">
+                                    Approved
+                                </flux:button>
+                                <flux:button wire:click="openInsurerRejectedModal" variant="danger" size="sm" icon="x-mark">
+                                    Not Approved
+                                </flux:button>
+                            </div>
+                        </div>
+                    </div>
+                </flux:card>
+                @elseif (! $isEmployerManaged && auth()->user()->hasAnyRole(['admin', 'pic']))
+                <flux:card class="dark:bg-zinc-900 border border-blue-300 dark:border-blue-700">
+                    <div class="flex items-start gap-4">
+                        <div class="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 shrink-0">
+                            <flux:icon.scale variant="outline" class="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div class="flex-1">
+                            <flux:heading size="md" class="mb-1">Pending: Insurer Decision</flux:heading>
+                            <flux:text class="text-sm mb-4">Has {{ $insurerLabel }} responded with a decision on this claim?</flux:text>
+                            <div class="flex gap-2">
+                                <flux:button wire:click="openInsurerApprovedModal" variant="primary" size="sm" icon="check">
+                                    Approved
+                                </flux:button>
+                                <flux:button wire:click="openInsurerRejectedModal" variant="danger" size="sm" icon="x-mark">
+                                    Not Approved
+                                </flux:button>
+                            </div>
+                        </div>
+                    </div>
+                </flux:card>
+                @endif
             @endif
 
             {{-- Appeal Rejected — Close Prompt --}}
-            @if ($claim->appeal_count >= 1 && $claim->insurer_decision === 'rejected' && $claim->status !== 'closed')
+            @if ($claim->appeal_count >= 1 && $decisionIsCurrent && $claim->insurer_decision === 'rejected' && $claim->status !== 'closed')
             @can('claims.close')
             <flux:card class="dark:bg-zinc-900 border border-red-300 dark:border-red-700">
                 <div class="flex items-start gap-4">
@@ -736,7 +1015,31 @@
         </div>
     </flux:modal>
 
-    {{-- Insurer Submission Modal --}}
+    {{-- Employer Insurer Submission Modal (Employer-Managed Claims) --}}
+    <flux:modal name="employer-insurer-submission" class="max-w-md">
+        <div class="p-6 space-y-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30">
+                    <flux:icon.paper-airplane class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <flux:heading size="lg">Submitted to {{ $claim->claim_type === 'perkeso' ? 'PERKESO' : 'Green Card' }}</flux:heading>
+            </div>
+
+            <flux:text>You are confirming that you have submitted this claim application directly to <strong>{{ $claim->claim_type === 'perkeso' ? 'PERKESO' : 'Green Card' }}</strong>.</flux:text>
+            <flux:text class="text-sm text-zinc-500">CLAB will be notified and will monitor the progress of your application.</flux:text>
+
+            <div class="flex flex-col gap-2 pt-2">
+                <flux:button wire:click="confirmSubmittedToInsurer(false)" variant="primary" icon="check" class="w-full">
+                    Confirm
+                </flux:button>
+                <flux:modal.close>
+                    <flux:button variant="ghost" class="w-full">Cancel</flux:button>
+                </flux:modal.close>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Insurer Submission Modal (PIC/Admin) --}}
     <flux:modal name="insurer-submission" class="max-w-md">
         <div class="p-6 space-y-4">
             <div class="flex items-center gap-3">
@@ -746,7 +1049,7 @@
                 <flux:heading size="lg">Submitted to Insurer</flux:heading>
             </div>
 
-            <flux:text>You are confirming that this claim application has been submitted to <strong>Liberty Insurance</strong>.</flux:text>
+            <flux:text>You are confirming that this claim application has been submitted to <strong>{{ $insurerLabel }}</strong>.</flux:text>
             <flux:text>Would you like to send an email notification to the contractor informing them of this update?</flux:text>
 
             <div class="flex flex-col gap-2 pt-2">
@@ -770,10 +1073,16 @@
                 <div class="p-2 rounded-lg bg-green-50 dark:bg-green-900/30">
                     <flux:icon.check-circle class="w-5 h-5 text-green-600 dark:text-green-400" />
                 </div>
-                <flux:heading size="lg">Insurer Approved</flux:heading>
+                <flux:heading size="lg">{{ $claim->isEmployerManaged() ? $insurerLabel . ' Approved' : 'Insurer Approved' }}</flux:heading>
             </div>
 
-            <flux:text class="text-sm">Please upload the approval letter and specify the payment channel as advised by Liberty Insurance.</flux:text>
+            <flux:text class="text-sm">
+                @if ($claim->isEmployerManaged())
+                    Please upload the approval letter received from <strong>{{ $insurerLabel }}</strong> and specify the payment channel.
+                @else
+                    Please upload the approval letter and specify the payment channel as advised by {{ $insurerLabel }}.
+                @endif
+            </flux:text>
 
             <flux:field>
                 <flux:label>Payment Channel</flux:label>
@@ -801,7 +1110,7 @@
 
             <div class="flex flex-col gap-2 pt-2">
                 <flux:button wire:click="confirmInsurerApproved" variant="primary" icon="check" class="w-full">
-                    Confirm & Notify Contractor
+                    {{ $claim->isEmployerManaged() ? 'Confirm & Notify CLAB' : 'Confirm & Notify Contractor' }}
                 </flux:button>
                 <flux:modal.close>
                     <flux:button variant="ghost" class="w-full">Cancel</flux:button>
@@ -817,10 +1126,16 @@
                 <div class="p-2 rounded-lg bg-red-50 dark:bg-red-900/30">
                     <flux:icon.x-circle class="w-5 h-5 text-red-600 dark:text-red-400" />
                 </div>
-                <flux:heading size="lg">Insurer Not Approved</flux:heading>
+                <flux:heading size="lg">{{ $claim->isEmployerManaged() ? $insurerLabel . ' Not Approved' : 'Insurer Not Approved' }}</flux:heading>
             </div>
 
-            <flux:text class="text-sm">Please provide the reason for rejection from Liberty Insurance. The contractor will be notified via email.</flux:text>
+            <flux:text class="text-sm">
+                @if ($claim->isEmployerManaged())
+                    Please provide the rejection reason from <strong>{{ $insurerLabel }}</strong>. CLAB admin will be notified.
+                @else
+                    Please provide the reason for rejection from {{ $insurerLabel }}. The contractor will be notified via email.
+                @endif
+            </flux:text>
 
             <flux:field>
                 <flux:label>Rejection Reason</flux:label>
@@ -845,7 +1160,7 @@
 
             <div class="flex flex-col gap-2 pt-2">
                 <flux:button wire:click="confirmInsurerRejected" variant="danger" icon="x-mark" class="w-full">
-                    Confirm & Notify Contractor
+                    {{ $claim->isEmployerManaged() ? 'Confirm & Notify CLAB' : 'Confirm & Notify Contractor' }}
                 </flux:button>
                 <flux:modal.close>
                     <flux:button variant="ghost" class="w-full">Cancel</flux:button>

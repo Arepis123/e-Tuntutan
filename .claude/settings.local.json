@@ -31,7 +31,8 @@
       "Bash(findstr :8000)",
       "Bash(cmd:*)",
       "Bash(findstr \":8000 \")",
-      "Bash(php *)"
+      "Bash(php *)",
+      "Bash(xargs grep *)"
     ]
   }
 }

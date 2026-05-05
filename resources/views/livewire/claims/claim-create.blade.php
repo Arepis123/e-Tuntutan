@@ -154,7 +154,7 @@
             <flux:field>
                 <flux:label>Working Hours</flux:label>
                 <div class="flex items-center gap-2 mt-1">
-                    <flux:time-picker wire:model="workingHourFrom" class="flex-1" />
+                    <flux:time-picker wire:model.live="workingHourFrom" class="flex-1" />
                     <span class="text-zinc-400 text-sm shrink-0">to</span>
                     <flux:time-picker wire:model="workingHourTo" class="flex-1" />
                 </div>
@@ -285,12 +285,24 @@
 
         {{-- Step 4: Documents --}}
         @if ($step === 4)
+        @php
+            $isEmployerManaged = in_array($claimType, ['perkeso', 'green_card'])
+                && ($foundWorker['worker_type'] ?? '') === 'existing';
+            $insurerLabel = match($claimType) { 'perkeso' => 'PERKESO', 'green_card' => 'CIDB', default => 'Liberty' };
+        @endphp
         <flux:heading size="lg" class="mb-1">Step 4: Required Documents</flux:heading>
+        @if ($isEmployerManaged)
+        <flux:text class="mb-6">
+            As you will be submitting this claim directly to <strong>{{ $insurerLabel }}</strong>, CLAB does not require the original documents.
+            Please send <strong>digital copies</strong> (scanned or photographed) of all documents — including any completed forms — to CLAB for record-keeping.
+        </flux:text>
+        @else
         <flux:text class="mb-6">Please download, complete, and send the following documents to our office by post or in person.</flux:text>
+        @endif
 
         {{-- Downloadable Forms --}}
         @if ($downloadableDocs->isNotEmpty())
-        <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">Form to Download & Complete</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">Forms to Download & Complete</p>
         <div class="space-y-2 mb-6">
             @foreach ($downloadableDocs as $doc)
             <div class="flex items-center justify-between border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
@@ -300,7 +312,9 @@
                     </div>
                     <div>
                         <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->label }}</p>
-                        @if ($doc->document_type === 'fwhs_medical_form')
+                        @if ($isEmployerManaged)
+                        <p class="text-xs text-zinc-500 dark:text-zinc-400">Download, complete, and send a digital copy to CLAB</p>
+                        @elseif ($doc->document_type === 'fwhs_medical_form')
                         <p class="text-xs text-zinc-500 dark:text-zinc-400">To be completed by the attending doctor — bring this form to the hospital</p>
                         @elseif ($doc->document_type === 'fwhs_checklist')
                         <p class="text-xs text-zinc-500 dark:text-zinc-400">Download, tick all items, and include with your submission</p>
@@ -321,10 +335,12 @@
         </div>
         @endif
 
-        {{-- Original Supporting Documents --}}
+        {{-- Supporting Documents --}}
         @php $submitDocs = $requiredDocs->filter(fn($d) => !$downloadableDocs->contains('id', $d->id)); @endphp
         @if ($submitDocs->isNotEmpty())
-        <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">Original Documents to Submit</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">
+            {{ $isEmployerManaged ? 'Documents to Send as Digital Copy' : 'Original Documents to Submit' }}
+        </p>
         <div class="space-y-2 mb-6">
             @foreach ($submitDocs as $doc)
             <div class="flex items-center gap-3 border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
@@ -333,14 +349,32 @@
                 </div>
                 <div>
                     <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->label }}</p>
-                    <p class="text-xs text-zinc-500 dark:text-zinc-400">Please submit the original copy</p>
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                        {{ $isEmployerManaged ? 'Send a scanned or digital copy to CLAB' : 'Please submit the original copy' }}
+                    </p>
                 </div>
             </div>
             @endforeach
         </div>
         @endif
 
-        {{-- Postal Address --}}
+        {{-- Submission Instructions --}}
+        @if ($isEmployerManaged)
+        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+                <flux:icon.envelope class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                <div>
+                    <p class="font-semibold text-blue-800 dark:text-blue-300 mb-1">Send Digital Copies To CLAB:</p>
+                    <p class="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
+                        Please upload all digital copies via the claim detail page after submission.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <flux:text class="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+            Once submitted, CLAB will review your claim. Remember to also submit the claim directly to <strong>{{ $insurerLabel }}</strong> and update the status via the claim detail page.
+        </flux:text>
+        @else
         <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
             <div class="flex items-start gap-3">
                 <flux:icon.map-pin class="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
@@ -356,10 +390,10 @@
                 </div>
             </div>
         </div>
-
         <flux:text class="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
             Once submitted, our admin team will process your claim and mark each document as received upon arrival.
         </flux:text>
+        @endif
         @endif
 
         </div>
