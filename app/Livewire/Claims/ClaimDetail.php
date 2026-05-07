@@ -255,6 +255,31 @@ class ClaimDetail extends Component
         $this->modal('employer-insurer-submission')->show();
     }
 
+    public function openEmployerAppealModal(): void
+    {
+        $this->claim->loadMissing('worker');
+        abort_unless(Auth::id() === $this->claim->user_id && $this->claim->isEmployerManaged(), 403);
+        $this->modal('employer-appeal')->show();
+    }
+
+    public function confirmEmployerAppeal(): void
+    {
+        $this->claim->loadMissing('worker');
+        abort_unless(Auth::id() === $this->claim->user_id && $this->claim->isEmployerManaged(), 403);
+        abort_unless($this->claim->insurer_decision === 'rejected' && $this->claim->appeal_count === 0, 403);
+
+        $this->claim->update([
+            'appealed_at'  => now(),
+            'appeal_count' => $this->claim->appeal_count + 1,
+            'status'       => 'open',
+        ]);
+
+        $this->notifyStatusChange();
+        $this->claim->refresh();
+        $this->modal('employer-appeal')->close();
+        $this->dispatch('notify', message: 'Appeal recorded. Please submit to the insurer when ready.');
+    }
+
     public function confirmSubmittedToInsurer(bool $notifyContractor = false): void
     {
         $this->authorizeInsurerStep();
@@ -502,6 +527,10 @@ class ClaimDetail extends Component
                 'mime_type'         => $mimeType,
                 'uploaded_by'       => Auth::id(),
             ]);
+        }
+
+        if ($this->claim->status === 'open') {
+            $this->claim->update(['status' => 'in_progress']);
         }
 
         $this->reset('clientUploadFiles');

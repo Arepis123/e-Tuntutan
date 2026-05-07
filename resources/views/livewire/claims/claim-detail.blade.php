@@ -14,7 +14,7 @@
             </div>
         </div>
 
-        @if ($claim->insurer_decision === 'rejected' && $claim->user_id === auth()->id() && auth()->user()->hasRole('employer') && $claim->appeal_count === 0)
+        @if ($claim->insurer_decision === 'rejected' && $claim->user_id === auth()->id() && auth()->user()->hasRole('employer') && $claim->appeal_count === 0 && ! $claim->isEmployerManaged())
         <flux:button :href="route('claims.appeal', $claim)" wire:navigate variant="danger" icon="arrow-path">
             Appeal Claim
         </flux:button>
@@ -615,9 +615,27 @@
             {{-- Status Timeline --}}
             <flux:card class="dark:bg-zinc-900">
                 <flux:heading size="lg" class="mb-4">Timeline</flux:heading>
+                @php
+                    $appealed = $claim->appealed_at;
+                    $tsMap = collect([
+                        'submitted'        => $claim->created_at,
+                        'approved'         => $claim->approved_at,
+                        'rejected'         => $claim->rejected_at,
+                        'docs_pre'         => ($claim->documents_received_at && (!$appealed || $claim->documents_received_at <= $appealed)) ? $claim->documents_received_at : null,
+                        'insurer_sub_pre'  => ($claim->submitted_to_insurer_at && (!$appealed || $claim->submitted_to_insurer_at <= $appealed)) ? $claim->submitted_to_insurer_at : null,
+                        'insurer_dec_pre'  => ($claim->insurer_decision && $claim->insurer_decided_at && (!$appealed || $claim->insurer_decided_at <= $appealed)) ? $claim->insurer_decided_at : null,
+                        'appealed'         => $appealed,
+                        'docs_post'        => ($claim->documents_received_at && $appealed && $claim->documents_received_at > $appealed) ? $claim->documents_received_at : null,
+                        'insurer_sub_post' => ($claim->submitted_to_insurer_at && $appealed && $claim->submitted_to_insurer_at > $appealed) ? $claim->submitted_to_insurer_at : null,
+                        'insurer_dec_post' => ($claim->insurer_decision && $claim->insurer_decided_at && $appealed && $claim->insurer_decided_at > $appealed) ? $claim->insurer_decided_at : null,
+                        'closed'           => $claim->closed_at,
+                    ])->filter();
+                    $latestTs  = $tsMap->max(fn($v) => $v->timestamp);
+                    $latestKey = $tsMap->search(fn($v) => $v->timestamp === $latestTs) ?: 'submitted';
+                @endphp
                 <flux:timeline>
                     <flux:timeline.item>
-                        <flux:timeline.indicator>
+                        <flux:timeline.indicator :color="$latestKey === 'submitted' ? 'green' : null">
                             <flux:icon.send-horizontal variant="micro" />
                         </flux:timeline.indicator>
                         <flux:timeline.content>
@@ -631,7 +649,7 @@
                     {{-- PIC approval / rejection happen before documents are received --}}
                     @if ($claim->approved_at)
                     <flux:timeline.item>
-                        <flux:timeline.indicator>
+                        <flux:timeline.indicator :color="$latestKey === 'approved' ? 'green' : null">
                             <flux:icon.check variant="micro" />
                         </flux:timeline.indicator>
                         <flux:timeline.content>
@@ -645,7 +663,7 @@
 
                     @if ($claim->rejected_at)
                     <flux:timeline.item>
-                        <flux:timeline.indicator>
+                        <flux:timeline.indicator :color="$latestKey === 'rejected' ? 'green' : null">
                             <flux:icon.x-mark variant="micro" />
                         </flux:timeline.indicator>
                         <flux:timeline.content>
@@ -660,15 +678,10 @@
                     </flux:timeline.item>
                     @endif
 
-                    @php
-                        // Items before the appeal (or all items if no appeal)
-                        $appealed = $claim->appealed_at;
-                    @endphp
-
                     {{-- Pre-appeal: Documents Received --}}
                     @if ($claim->documents_received_at && (!$appealed || $claim->documents_received_at <= $appealed))
                     <flux:timeline.item>
-                        <flux:timeline.indicator>
+                        <flux:timeline.indicator :color="$latestKey === 'docs_pre' ? 'green' : null">
                             <flux:icon.check-check variant="micro" />
                         </flux:timeline.indicator>
                         <flux:timeline.content>
@@ -676,9 +689,9 @@
                                 <flux:heading>All Documents Received</flux:heading>
                                 <flux:text class="text-xs text-zinc-400">{{ $claim->documents_received_at->format('M j, g:i A') }}</flux:text>
                             </div>
-                            @if ($claim->documentsReceivedBy)
+                            {{-- @if ($claim->documentsReceivedBy)
                             <flux:text class="text-xs mt-0.5">Verified by {{ $claim->documentsReceivedBy->name }}</flux:text>
-                            @endif
+                            @endif --}}
                         </flux:timeline.content>
                     </flux:timeline.item>
                     @endif
@@ -686,7 +699,7 @@
                     {{-- Pre-appeal: Submitted to Insurer --}}
                     @if ($claim->submitted_to_insurer_at && (!$appealed || $claim->submitted_to_insurer_at <= $appealed))
                     <flux:timeline.item>
-                        <flux:timeline.indicator>
+                        <flux:timeline.indicator :color="$latestKey === 'insurer_sub_pre' ? 'green' : null">
                             <flux:icon.send-horizontal variant="micro" />
                         </flux:timeline.indicator>
                         <flux:timeline.content>
@@ -694,9 +707,9 @@
                                 <flux:heading>Submitted to Insurer</flux:heading>
                                 <flux:text class="text-xs text-zinc-400">{{ $claim->submitted_to_insurer_at->format('M j, g:i A') }}</flux:text>
                             </div>
-                            @if ($claim->submittedToInsurerBy)
+                            {{-- @if ($claim->submittedToInsurerBy)
                             <flux:text class="text-xs mt-0.5">By {{ $claim->submittedToInsurerBy->name }}</flux:text>
-                            @endif
+                            @endif --}}
                         </flux:timeline.content>
                     </flux:timeline.item>
                     @endif
@@ -704,7 +717,7 @@
                     {{-- Pre-appeal: Insurer Decision --}}
                     @if ($claim->insurer_decision && (!$appealed || $claim->insurer_decided_at <= $appealed))
                     <flux:timeline.item>
-                        <flux:timeline.indicator>
+                        <flux:timeline.indicator :color="$latestKey === 'insurer_dec_pre' ? 'green' : null">
                             @if ($claim->insurer_decision === 'approved')
                                 <flux:icon.circle-check variant="micro" />
                             @else
@@ -716,9 +729,9 @@
                                 <flux:heading>Insurer {{ $claim->insurer_decision === 'approved' ? 'Approved' : 'Rejected' }}</flux:heading>
                                 <flux:text class="text-xs text-zinc-400">{{ $claim->insurer_decided_at->format('M j, g:i A') }}</flux:text>
                             </div>
-                            @if ($claim->insurerDecidedBy)
+                            {{-- @if ($claim->insurerDecidedBy)
                             <flux:text class="text-xs mt-0.5">Recorded by {{ $claim->insurerDecidedBy->name }}</flux:text>
-                            @endif
+                            @endif --}}
                             @if ($claim->insurer_decision === 'approved' && $claim->payment_channel)
                             <flux:text class="text-xs mt-0.5">
                                 Payment channel: <strong>{{ $claim->payment_channel === 'clab' ? 'Transfer to CLAB' : 'Transfer to Contractor' }}</strong>
@@ -734,7 +747,7 @@
                     {{-- Appeal marker --}}
                     @if ($appealed)
                     <flux:timeline.item>
-                        <flux:timeline.indicator>
+                        <flux:timeline.indicator :color="$latestKey === 'appealed' ? 'green' : null">
                             <flux:icon.arrow-path variant="micro" />
                         </flux:timeline.indicator>
                         <flux:timeline.content>
@@ -748,7 +761,7 @@
                     {{-- Post-appeal: Documents Received --}}
                     @if ($claim->documents_received_at && $claim->documents_received_at > $appealed)
                     <flux:timeline.item>
-                        <flux:timeline.indicator>
+                        <flux:timeline.indicator :color="$latestKey === 'docs_post' ? 'green' : null">
                             <flux:icon.check-check variant="micro" />
                         </flux:timeline.indicator>
                         <flux:timeline.content>
@@ -766,7 +779,7 @@
                     {{-- Post-appeal: Submitted to Insurer --}}
                     @if ($claim->submitted_to_insurer_at && $claim->submitted_to_insurer_at > $appealed)
                     <flux:timeline.item>
-                        <flux:timeline.indicator>
+                        <flux:timeline.indicator :color="$latestKey === 'insurer_sub_post' ? 'green' : null">
                             <flux:icon.send-horizontal variant="micro" />
                         </flux:timeline.indicator>
                         <flux:timeline.content>
@@ -784,7 +797,7 @@
                     {{-- Post-appeal: Insurer Decision --}}
                     @if ($claim->insurer_decision && $claim->insurer_decided_at > $appealed)
                     <flux:timeline.item>
-                        <flux:timeline.indicator>
+                        <flux:timeline.indicator :color="$latestKey === 'insurer_dec_post' ? 'green' : null">
                             @if ($claim->insurer_decision === 'approved')
                                 <flux:icon.circle-check variant="micro" />
                             @else
@@ -796,9 +809,9 @@
                                 <flux:heading>Insurer {{ $claim->insurer_decision === 'approved' ? 'Approved' : 'Rejected' }} (Appeal)</flux:heading>
                                 <flux:text class="text-xs text-zinc-400">{{ $claim->insurer_decided_at->format('M j, g:i A') }}</flux:text>
                             </div>
-                            @if ($claim->insurerDecidedBy)
+                            {{-- @if ($claim->insurerDecidedBy)
                             <flux:text class="text-xs mt-0.5">Recorded by {{ $claim->insurerDecidedBy->name }}</flux:text>
-                            @endif
+                            @endif --}}
                             @if ($claim->insurer_decision === 'approved' && $claim->payment_channel)
                             <flux:text class="text-xs mt-0.5">
                                 Payment channel: <strong>{{ $claim->payment_channel === 'clab' ? 'Transfer to CLAB' : 'Transfer to Contractor' }}</strong>
@@ -814,7 +827,7 @@
 
                     @if ($claim->closed_at)
                     <flux:timeline.item>
-                        <flux:timeline.indicator>
+                        <flux:timeline.indicator :color="$latestKey === 'closed' ? 'green' : null">
                             <flux:icon.archive-box variant="micro" />
                         </flux:timeline.indicator>
                         <flux:timeline.content>
@@ -831,14 +844,21 @@
             @php
                 $isEmployerManaged = $claim->isEmployerManaged();
                 $insurerLabel = match($claim->claim_type) { 'perkeso' => 'PERKESO', 'green_card' => 'CIDB', default => 'Liberty' };
+                $clientHasUploaded = $claim->documents->filter(fn($d) => $d->path)->isNotEmpty();
                 // "needs redo" = no value yet, OR value predates last appeal
                 $needsSubmit  = ! $claim->submitted_to_insurer_at
                     || ($claim->appealed_at && $claim->appealed_at > $claim->submitted_to_insurer_at);
+                // employer-managed appeal: appeal confirmed but no new submission yet — skip submission, go straight to decision
+                $employerAppealActive = $isEmployerManaged
+                    && $claim->appealed_at
+                    && (! $claim->submitted_to_insurer_at || $claim->appealed_at > $claim->submitted_to_insurer_at);
                 // "current round submitted" = submitted AFTER last appeal (or no appeal)
                 $currentRoundSubmitted = $claim->submitted_to_insurer_at
                     && (! $claim->appealed_at || $claim->submitted_to_insurer_at > $claim->appealed_at);
-                $needsDecision = $currentRoundSubmitted
-                    && (! $claim->insurer_decision || $claim->insurer_decided_at < $claim->submitted_to_insurer_at);
+                $needsDecision = ($currentRoundSubmitted
+                    && (! $claim->insurer_decision || $claim->insurer_decided_at < $claim->submitted_to_insurer_at))
+                    || ($employerAppealActive
+                        && (! $claim->insurer_decision || ($claim->insurer_decided_at && $claim->insurer_decided_at < $claim->appealed_at)));
                 // Close prompt only when decision is from the current (post-last-appeal) round
                 $decisionIsCurrent = $claim->insurer_decision
                     && (! $claim->appealed_at || $claim->insurer_decided_at > $claim->appealed_at);
@@ -846,7 +866,7 @@
 
             {{-- Insurer Submission Prompt --}}
             @if ($needsSubmit)
-                @if ($isEmployerManaged && auth()->id() === $claim->user_id && $claim->approved_at)
+                @if ($isEmployerManaged && auth()->id() === $claim->user_id && $clientHasUploaded && ! $employerAppealActive)
                 <style>
                     @keyframes blink3 { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
                     .blink-3 { animation: blink3 0.6s ease-in-out 3; }
@@ -959,6 +979,24 @@
                 </div>
             </flux:card>
             @endcan
+            @endif
+
+            {{-- Employer-Managed Appeal Prompt --}}
+            @if ($isEmployerManaged && auth()->id() === $claim->user_id && $decisionIsCurrent && $claim->insurer_decision === 'rejected' && $claim->appeal_count === 0 && $claim->status !== 'closed')
+            <flux:card class="dark:bg-zinc-900 border border-amber-300 dark:border-amber-700">
+                <div class="flex items-start gap-4">
+                    <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/30 shrink-0">
+                        <flux:icon.arrow-path class="w-5 h-5 text-amber-500" />
+                    </div>
+                    <div class="flex-1">
+                        <flux:heading size="md" class="mb-1">Appeal with {{ $insurerLabel }}?</flux:heading>
+                        <flux:text class="text-sm mb-4">Your claim was not approved. You may apply for an appeal directly with <strong>{{ $insurerLabel }}</strong>. Have you already submitted an appeal?</flux:text>
+                        <flux:button wire:click="openEmployerAppealModal" variant="primary" size="sm" icon="arrow-path">
+                            Yes, I have applied for an appeal
+                        </flux:button>
+                    </div>
+                </div>
+            </flux:card>
             @endif
 
             {{-- Submitted By --}}
@@ -1161,6 +1199,27 @@
             <div class="flex flex-col gap-2 pt-2">
                 <flux:button wire:click="confirmInsurerRejected" variant="danger" icon="x-mark" class="w-full">
                     {{ $claim->isEmployerManaged() ? 'Confirm & Notify CLAB' : 'Confirm & Notify Contractor' }}
+                </flux:button>
+                <flux:modal.close>
+                    <flux:button variant="ghost" class="w-full">Cancel</flux:button>
+                </flux:modal.close>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Employer Appeal Confirmation Modal --}}
+    <flux:modal name="employer-appeal" class="max-w-md">
+        <div class="p-6 space-y-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/30">
+                    <flux:icon.arrow-path class="w-5 h-5 text-amber-500" />
+                </div>
+                <flux:heading size="lg">Confirm Appeal Submission</flux:heading>
+            </div>
+            <flux:text>You are confirming that you have submitted an appeal directly to <strong>{{ $insurerLabel }}</strong>. CLAB will be notified and will monitor the progress.</flux:text>
+            <div class="flex flex-col gap-2 pt-2">
+                <flux:button wire:click="confirmEmployerAppeal" variant="primary" icon="check" class="w-full">
+                    Confirm
                 </flux:button>
                 <flux:modal.close>
                     <flux:button variant="ghost" class="w-full">Cancel</flux:button>

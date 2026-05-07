@@ -33,7 +33,7 @@ class ClaimList extends Component
     {
         $user = auth()->user();
 
-        $query = Claim::with(['worker', 'user'])
+        $query = Claim::with(['worker', 'user', 'documents'])
             ->when($user->hasRole('employer'), fn ($q) => $q->where('user_id', $user->id))
             ->when($this->search, fn ($q) => $q->whereHas('worker', fn ($wq) => $wq->where('name', 'like', "%{$this->search}%")
                 ->orWhere('passport_number', 'like', "%{$this->search}%"))
@@ -52,6 +52,10 @@ class ClaimList extends Component
             'closed'      => (clone $baseQuery)->where('status', 'closed')->count(),
         ];
 
-        return view('livewire.claims.claim-list', compact('claims', 'stats'));
+        $view = $user->hasRole('employer')
+            ? 'livewire.claims.claim-list-client'
+            : 'livewire.claims.claim-list';
+
+        return view($view, compact('claims', 'stats'));
     }
 }
