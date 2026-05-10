@@ -254,6 +254,39 @@ class ClaimAppeal extends Component
             ->get();
     }
 
+    public function downloadFcl(): mixed
+    {
+        $data = [
+            'incidentType'           => $this->incidentType,
+            'worker'                 => $this->foundWorker,
+            'incidentDate'           => $this->incidentDate,
+            'incidentTime'           => $this->incidentTime,
+            'incidentLocation'       => $this->incidentLocation,
+            'incidentDescription'    => $this->incidentDescription,
+            'injuryTypes'            => $this->injuryTypes,
+            'injuryTypeOther'        => $this->injuryTypeOther,
+            'injuryDescription'      => $this->injuryDescription,
+            'diseaseType'            => $this->diseaseType,
+            'isHistoricalDisease'    => $this->isHistoricalDisease,
+            'isWorkRelated'          => $this->isWorkRelated,
+            'workRelatedDescription' => $this->workRelatedDescription,
+            'hospitalName'           => $this->hospitalName,
+            'dateOfEmployment'       => $this->dateOfEmployment,
+            'workingHourFrom'        => $this->workingHourFrom,
+            'workingHourTo'          => $this->workingHourTo,
+            'facilityMeals'          => $this->facilityMeals,
+            'facilityAccommodation'  => $this->facilityAccommodation,
+            'facilityTransportation' => $this->facilityTransportation,
+        ];
+
+        $pdf      = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.fcl-form', $data)->setPaper('a4');
+        $filename = $this->incidentType === 'accident' ? 'FCL_Accident_Form.pdf' : 'FCL_Non_Accident_Form.pdf';
+
+        return response()->streamDownload(fn () => print($pdf->output()), $filename, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
+
     public function downloadDoc(int $id): mixed
     {
         $doc = \App\Models\DocumentConfig::findOrFail($id);

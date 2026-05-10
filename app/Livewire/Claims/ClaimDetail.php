@@ -76,6 +76,21 @@ class ClaimDetail extends Component
             'attachments' => $attachments ?: null,
         ]);
 
+        if (! $this->noteIsInternal) {
+            $author = Auth::user();
+
+            if ($author->hasAnyRole(['admin', 'pic'])) {
+                // Notify the client (employer) via company PIC email
+                if ($this->claim->user) {
+                    $this->claim->user->notify(new \App\Notifications\ClaimNoteNotification($this->claim, $author));
+                }
+            } else {
+                // Notify all PICs
+                $pics = \App\Models\User::role('pic')->get();
+                Notification::send($pics, new \App\Notifications\ClaimNoteNotification($this->claim, $author));
+            }
+        }
+
         $this->reset('newNote', 'noteFiles');
         $this->claim->refresh();
     }

@@ -31,8 +31,8 @@
             <div class="relative z-10 flex flex-col justify-between p-12 w-full">
                 {{-- Brand --}}
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
-                        <flux:icon.document-text class="w-5 h-5 text-white" />
+                    <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center overflow-hidden">
+                        <img src="{{ asset('images/logo-clab.png') }}" alt="CLAB" class="w-7 h-7 object-contain" />
                     </div>
                     <span class="text-xl font-semibold text-white">e-Tuntutan</span>
                 </div>
@@ -53,8 +53,8 @@
                         </div>
                         <div class="w-px bg-white/20"></div>
                         <div>
-                            <p class="text-2xl font-bold text-white">100%</p>
-                            <p class="text-sky-100 text-sm">Paperless</p>
+                            <p class="text-2xl font-bold text-white">Digital</p>
+                            <p class="text-sky-100 text-sm">No More Emails</p>
                         </div>
                         <div class="w-px bg-white/20"></div>
                         <div>

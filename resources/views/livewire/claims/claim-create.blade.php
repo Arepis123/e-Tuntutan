@@ -85,9 +85,13 @@
         @if ($step === 2)
         <flux:heading size="lg" class="mb-4">Step 2: Worker Information</flux:heading>
 
-        <div class="flex flex-col sm:flex-row gap-3 mb-2">
-            <flux:input wire:model="passportNumber" placeholder="Enter passport number" label="Passport Number" class="flex-1" />
-            <flux:button wire:click="lookupWorker" variant="filled" class="self-end w-full sm:w-auto">Search</flux:button>
+        <div class="mb-2">
+            <flux:label class="mb-1">Passport Number</flux:label>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <flux:input wire:model="passportNumber" placeholder="Enter passport number" class="flex-1 max-w-xs" />
+                <flux:button wire:click="lookupWorker" variant="filled" class="w-full sm:w-auto">Search</flux:button>
+            </div>
+            <flux:error name="passportNumber" />
         </div>
 
         @if ($workerNotFound)
@@ -328,15 +332,28 @@
                     </div>
                 </div>
                 @if ($doc->file_path && !in_array($doc->document_type, ['accident_fcl', 'non_accident_fcl']))
-                <flux:button wire:click="downloadDoc({{ $doc->id }})" size="sm" variant="filled" icon="arrow-down-tray" class="w-full sm:w-auto">Download</flux:button>
+                    @if (in_array($doc->id, $downloadedDocIds))
+                    <flux:button wire:click="downloadDoc({{ $doc->id }})" size="sm" variant="outline" icon="check-circle" class="w-full sm:w-auto text-green-600 dark:text-green-400">Downloaded</flux:button>
+                    @else
+                    <flux:button wire:click="downloadDoc({{ $doc->id }})" size="sm" variant="filled" icon="arrow-down-tray" class="w-full sm:w-auto">Download</flux:button>
+                    @endif
                 @elseif (in_array($doc->document_type, ['accident_fcl', 'non_accident_fcl']))
-                <flux:button wire:click="downloadFcl" size="sm" variant="filled" icon="arrow-down-tray" class="w-full sm:w-auto">Download</flux:button>
+                    @if ($fclDownloaded)
+                    <flux:button wire:click="downloadFcl" size="sm" variant="outline" icon="check-circle" class="w-full sm:w-auto text-green-600 dark:text-green-400">Downloaded</flux:button>
+                    @else
+                    <flux:button wire:click="downloadFcl" size="sm" variant="filled" icon="arrow-down-tray" class="w-full sm:w-auto">Download</flux:button>
+                    @endif
                 @else
                 <flux:button size="sm" variant="outline" icon="arrow-down-tray" disabled class="w-full sm:w-auto">No File</flux:button>
                 @endif
             </flux:card>
             @endforeach
         </div>
+        @error('downloads')
+        <flux:callout variant="danger" icon="x-circle" class="mb-4">
+            <flux:callout.text>{{ $message }}</flux:callout.text>
+        </flux:callout>
+        @enderror
         @endif
 
         {{-- Supporting Documents --}}

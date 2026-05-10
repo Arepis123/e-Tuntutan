@@ -425,7 +425,7 @@
             @endif
 
             {{-- Client Document Upload --}}
-            @if (auth()->user()->hasRole('employer') && $claim->user_id === auth()->id())
+            @if (auth()->user()->hasRole('employer') && $claim->user_id === auth()->id() && $claim->isEmployerManaged())
             @php
                 $requiredDocs   = $docConfigs->where('is_required', true);
                 $uploadedDocs   = $claim->documents->filter(fn($d) => $d->path);
@@ -1135,7 +1135,7 @@
                 <flux:label>Approval Letter (PDF)</flux:label>
                 <input
                     type="file"
-                    wire:model="insurerApprovalLetter"
+                    x-on:change="$wire.upload('insurerApprovalLetter', $event.target.files[0])"
                     accept=".pdf"
                     class="block w-full text-sm text-zinc-700 dark:text-zinc-300
                            file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0
@@ -1182,10 +1182,10 @@
             </flux:field>
 
             <flux:field>
-                <flux:label>Attachment <span class="text-zinc-400 font-normal">(optional)</span></flux:label>
+                <flux:label>Attachment <span class="text-zinc-400 font-normal ms-1">(optional)</span></flux:label>
                 <input
                     type="file"
-                    wire:model="insurerRejectionAttachment"
+                    x-on:change="$wire.upload('insurerRejectionAttachment', $event.target.files[0])"
                     accept=".pdf"
                     class="block w-full text-sm text-zinc-700 dark:text-zinc-300
                            file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0
@@ -1197,7 +1197,7 @@
             </flux:field>
 
             <div class="flex flex-col gap-2 pt-2">
-                <flux:button wire:click="confirmInsurerRejected" variant="danger" icon="x-mark" class="w-full">
+                <flux:button wire:click="confirmInsurerRejected" variant="danger" class="w-full">
                     {{ $claim->isEmployerManaged() ? 'Confirm & Notify CLAB' : 'Confirm & Notify Contractor' }}
                 </flux:button>
                 <flux:modal.close>

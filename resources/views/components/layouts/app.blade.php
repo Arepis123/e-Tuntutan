@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'e-Tuntutan' }} — CLAB</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('images/favicon.svg') }}">
+    <link rel="icon" type="image/png" sizes="96x96" href="{{ asset('images/favicon-96x96.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/apple-touch-icon.png') }}">
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600&display=swap" rel="stylesheet" />
     @fluxAppearance
@@ -15,7 +18,12 @@
 <flux:sidebar sticky collapsible class="bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-700">
 
     <flux:sidebar.header>
-        <flux:sidebar.brand href="{{ route('dashboard') }}" name="e-Tuntutan CLAB" />
+        <flux:sidebar.brand
+            href="{{ route('dashboard') }}"
+            logo="{{ asset('images/logo-clab.png') }}"
+            logo:dark="{{ asset('images/logo-clab.png') }}"
+            name="e-Tuntutan CLAB"
+        />
         <flux:sidebar.collapse class="in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-mr-2" />
     </flux:sidebar.header>
 
@@ -65,7 +73,7 @@
 
         @role('admin')
         <flux:sidebar.item
-            icon="cog-6-tooth"
+            icon="cog"
             href="{{ route('configuration.index') }}"
             :current="request()->routeIs('configuration.*')"
             wire:navigate
@@ -86,17 +94,6 @@
 
     <flux:sidebar.spacer />
 
-    <flux:sidebar.nav>
-        <flux:sidebar.item
-            icon="cog-6-tooth"
-            href="{{ route('settings') }}"
-            :current="request()->routeIs('settings')"
-            wire:navigate
-        >
-            Settings
-        </flux:sidebar.item>
-    </flux:sidebar.nav>
-
     @php
         $displayName = auth()->user()->company_name ?: auth()->user()->name;
     @endphp
@@ -106,7 +103,19 @@
             :initials="strtoupper(substr($displayName, 0, 2))"
         />
         <flux:menu>
-            <flux:menu.item icon="user">My Profile</flux:menu.item>
+            <flux:menu.radio.group>
+                <div class="p-0 text-sm font-normal">
+                    <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
+                        <flux:avatar name="{{ auth()->user() ? preg_replace('/\s+(BIN|BINTI|BT)\b.*/i', '', auth()->user()->name) : 'N/A' }}" />
+                        <div class="grid flex-1 text-start text-sm leading-tight">
+                            <span class="truncate font-semibold">{{ auth()->user()->name ? preg_replace('/\s+(BIN|BINTI|BT)\b.*/i', '', auth()->user()->name) : 'N/A' }}</span>
+                            <span class="truncate text-xs">{{ auth()->user()->email }}</span>
+                        </div>
+                    </div>
+                </div>
+            </flux:menu.radio.group>
+            <flux:menu.separator />
+            <flux:menu.item icon="cog" href="{{ route('settings') }}">Settings</flux:menu.item>
             <flux:menu.separator />
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
@@ -129,7 +138,19 @@
             :initials="strtoupper(substr($displayName, 0, 2))"
         />
         <flux:menu>
-            <flux:menu.item icon="user">My Profile</flux:menu.item>
+            <flux:menu.radio.group>
+                <div class="p-0 text-sm font-normal">
+                    <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
+                        <flux:avatar name="{{ auth()->user() ? preg_replace('/\s+(BIN|BINTI|BT)\b.*/i', '', auth()->user()->name) : 'N/A' }}" />
+                        <div class="grid flex-1 text-start text-sm leading-tight">
+                            <span class="truncate font-semibold">{{ auth()->user()->name ? preg_replace('/\s+(BIN|BINTI|BT)\b.*/i', '', auth()->user()->name) : 'N/A' }}</span>
+                            <span class="truncate text-xs">{{ auth()->user()->email }}</span>
+                        </div>
+                    </div>
+                </div>
+            </flux:menu.radio.group>
+            <flux:menu.separator />
+            <flux:menu.item icon="cog" href="{{ route('settings') }}">Settings</flux:menu.item>
             <flux:menu.separator />
             <form method="POST" action="{{ route('logout') }}">
                 @csrf

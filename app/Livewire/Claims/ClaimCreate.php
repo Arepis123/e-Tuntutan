@@ -89,6 +89,8 @@ class ClaimCreate extends Component
 
     // Step 4: Documents
     public array $uploadedFiles = [];
+    public array $downloadedDocIds = [];
+    public bool $fclDownloaded = false;
 
     protected function rules(): array
     {
@@ -176,6 +178,18 @@ class ClaimCreate extends Component
             return;
         }
 
+        if ((int) $worker->wkr_status !== 1) {
+            $this->addError('passportNumber', 'This worker is inactive and is not eligible to make a claim.');
+            return;
+        }
+
+        $permitExp = $worker->wkr_permitexp ?? null;
+        $invalidDates = ['0000-00-00', '1970-01-01', null, ''];
+        if (in_array($permitExp, $invalidDates) || $permitExp <= now()->toDateString()) {
+            $this->addError('passportNumber', 'This worker\'s work permit has expired or is invalid. Claims can only be submitted for workers with a valid permit.');
+            return;
+        }
+
         $isOutsource = \DB::connection('worker_db')
             ->table('contract_worker')
             ->where('con_wkr_id', $worker->wkr_id)
@@ -251,8 +265,31 @@ class ClaimCreate extends Component
         $this->step = max(1, $this->step - 1);
     }
 
+    protected function validateDownloads(): bool
+    {
+        $downloadableDocs = $this->getDocumentConfigs()->where('is_downloadable', true);
+
+        foreach ($downloadableDocs as $doc) {
+            $isFcl = in_array($doc->document_type, ['accident_fcl', 'non_accident_fcl']);
+
+            if ($isFcl && ! $this->fclDownloaded) {
+                $this->addError('downloads', 'Please download all required forms before submitting.');
+                return false;
+            }
+
+            if (! $isFcl && $doc->file_path && ! in_array($doc->id, $this->downloadedDocIds)) {
+                $this->addError('downloads', 'Please download all required forms before submitting.');
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function submit(): void
     {
+        if (! $this->validateDownloads()) return;
+
         $this->validate([
             'claimType'           => 'required|in:fwhs,green_card,perkeso',
             'claimCategory'       => 'required|in:hospitalization,death',
@@ -361,6 +398,8 @@ class ClaimCreate extends Component
         $pdf      = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.fcl-form', $data)->setPaper('a4');
         $filename = $this->incidentType === 'accident' ? 'FCL_Accident_Form.pdf' : 'FCL_Non_Accident_Form.pdf';
 
+        $this->fclDownloaded = true;
+
         return response()->streamDownload(fn () => print($pdf->output()), $filename, [
             'Content-Type' => 'application/pdf',
         ]);
@@ -380,6 +419,8 @@ class ClaimCreate extends Component
             : \Illuminate\Support\Facades\Storage::disk('public')->path($doc->file_path);
 
         $filename = \Illuminate\Support\Str::slug($doc->label) . '.pdf';
+
+        $this->downloadedDocIds = array_unique([...$this->downloadedDocIds, $id]);
 
         return response()->streamDownload(function () use ($path) {
             readfile($path);

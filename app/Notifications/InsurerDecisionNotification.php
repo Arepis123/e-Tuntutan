@@ -23,10 +23,12 @@ class InsurerDecisionNotification extends Notification implements ShouldQueue
     {
         $claim    = $this->claim;
         $approved = $claim->insurer_decision === 'approved';
+        $picEmail = $claim->company_pic_email;
+        $picName  = $claim->company_pic_name ?: $notifiable->name;
 
         $mail = (new MailMessage)
             ->subject("[e-Tuntutan] Insurer Decision: {$claim->claim_number} — " . ($approved ? 'Approved' : 'Not Approved'))
-            ->greeting("Dear {$notifiable->name},")
+            ->greeting("Dear {$picName},")
             ->line("We have received a decision from the insurance provider (Liberty) regarding your claim application.")
             ->line("**Claim No.:** {$claim->claim_number}")
             ->line("**Worker:** {$claim->worker->name} ({$claim->worker->passport_number})")
@@ -39,8 +41,13 @@ class InsurerDecisionNotification extends Notification implements ShouldQueue
             $mail->line("Please contact our office if you have any questions or wish to appeal.");
         }
 
-        return $mail
-            ->action('View Claim', route('claims.show', $claim))
-            ->salutation('Thank you, e-Tuntutan CLAB');
+        $mail->action('View Claim', route('claims.show', $claim))
+             ->salutation('Thank you, e-Tuntutan CLAB');
+
+        if ($picEmail) {
+            $mail->to($picEmail, $picName);
+        }
+
+        return $mail;
     }
 }

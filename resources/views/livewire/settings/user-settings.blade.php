@@ -18,40 +18,23 @@
                 </div>
                 @endif
 
-                <flux:input
-                    wire:model="name"
-                    label="Full Name"
-                    placeholder="Your full name"
-                    required
-                />
+                <flux:input wire:model="name" label="Full Name" placeholder="Your full name" :readonly="!auth()->user()->hasAnyRole(['admin','pic'])" required />
                 @error('name') <p class="text-red-500 text-sm -mt-4">{{ $message }}</p> @enderror
 
-                <flux:input
-                    wire:model="email"
-                    label="Email Address"
-                    type="email"
-                    placeholder="you@example.com"
-                    required
-                />
+                <flux:input wire:model="email" label="Email Address" type="email" placeholder="you@example.com" :readonly="!auth()->user()->hasAnyRole(['admin','pic'])" required />
                 @error('email') <p class="text-red-500 text-sm -mt-4">{{ $message }}</p> @enderror
 
-                <flux:input
-                    wire:model="phone"
-                    label="Phone Number"
-                    placeholder="+60 12-345 6789"
-                />
+                <flux:input wire:model="phone" label="Phone Number" placeholder="+60 12-345 6789" :readonly="!auth()->user()->hasAnyRole(['admin','pic'])" />
                 @error('phone') <p class="text-red-500 text-sm -mt-4">{{ $message }}</p> @enderror
 
-                <flux:input
-                    wire:model="company_name"
-                    label="Company / Organisation"
-                    placeholder="Your company name"
-                />
+                <flux:input wire:model="company_name" label="Company / Organisation" placeholder="Your company name" :readonly="!auth()->user()->hasAnyRole(['admin','pic'])" />
                 @error('company_name') <p class="text-red-500 text-sm -mt-4">{{ $message }}</p> @enderror
 
+                @if (auth()->user()->hasAnyRole(['admin','pic']))
                 <div class="flex justify-end">
                     <flux:button wire:click="saveProfile" variant="primary">Save Profile</flux:button>
                 </div>
+                @endif
             </div>
         </div>
 
@@ -64,41 +47,30 @@
                 <flux:subheading>Ensure your account is using a strong password to stay secure.</flux:subheading>
             </div>
             <div class="flex-1 space-y-6">
+                @if (auth()->user()->hasAnyRole(['admin','pic']))
                 @if (session('password_success'))
                 <div class="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
                     {{ session('password_success') }}
                 </div>
                 @endif
 
-                <flux:input
-                    wire:model="current_password"
-                    label="Current Password"
-                    type="password"
-                    placeholder="Enter current password"
-                    required
-                />
+                <flux:input wire:model="current_password" label="Current Password" type="password" placeholder="Enter current password" required />
                 @error('current_password') <p class="text-red-500 text-sm -mt-4">{{ $message }}</p> @enderror
 
-                <flux:input
-                    wire:model="new_password"
-                    label="New Password"
-                    type="password"
-                    placeholder="Min. 8 characters"
-                    required
-                />
+                <flux:input wire:model="new_password" label="New Password" type="password" placeholder="Min. 8 characters" required />
                 @error('new_password') <p class="text-red-500 text-sm -mt-4">{{ $message }}</p> @enderror
 
-                <flux:input
-                    wire:model="new_password_confirmation"
-                    label="Confirm New Password"
-                    type="password"
-                    placeholder="Repeat new password"
-                    required
-                />
+                <flux:input wire:model="new_password_confirmation" label="Confirm New Password" type="password" placeholder="Repeat new password" required />
 
                 <div class="flex justify-end">
                     <flux:button wire:click="savePassword" variant="primary">Update Password</flux:button>
                 </div>
+                @else
+                <flux:callout variant="warning" icon="lock-closed">
+                    <flux:callout.heading>Password Cannot Be Changed</flux:callout.heading>
+                    <flux:callout.text>Password updates must be performed on the e-CLAB Portal.</flux:callout.text>
+                </flux:callout>
+                @endif
             </div>
         </div>
 

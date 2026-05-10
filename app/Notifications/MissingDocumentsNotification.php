@@ -23,7 +23,14 @@ class MissingDocumentsNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $picEmail = $this->claim->company_pic_email;
+        $picName  = $this->claim->company_pic_name ?: $notifiable->name;
+
         $mail = (new MailMessage)->subject($this->subject);
+
+        if ($picEmail) {
+            $mail->to($picEmail, $picName);
+        }
 
         if ($this->cc) {
             $mail->cc($this->cc);

@@ -230,8 +230,9 @@
         {{-- Step 4: Documents --}}
         @if ($step === 4)
         @php
-            $isEmployerManaged = $claim->isEmployerManaged();
-            $insurerLabel = match($claim->claim_type) { 'perkeso' => 'PERKESO', 'green_card' => 'CIDB', default => 'Liberty' };
+            $isEmployerManaged  = $claim->isEmployerManaged();
+            $isExistingWorker   = $claim->worker->worker_type === 'existing';
+            $insurerLabel       = match($claim->claim_type) { 'perkeso' => 'PERKESO', 'green_card' => 'CIDB', default => 'Liberty' };
         @endphp
         <flux:heading size="lg" class="mb-1">Step 3: Supporting Documents</flux:heading>
         @if ($isEmployerManaged)
@@ -242,6 +243,13 @@
         @else
         <flux:text class="mb-6">Upload any updated documents to support your appeal. Previously submitted documents remain unless replaced.</flux:text>
         @endif
+
+        <flux:callout variant="warning" icon="exclamation-triangle" class="mb-6">
+            <flux:callout.heading>Official Appeal Letter Required</flux:callout.heading>
+            <flux:callout.text>
+                All appeal submissions must include an <strong>official appeal letter</strong> from your company bearing the <strong>company stamp or authorised signature</strong>. This letter must be submitted physically to CLAB before your appeal can be processed.
+            </flux:callout.text>
+        </flux:callout>
 
         @if ($downloadableDocs->isNotEmpty())
         <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">Forms to Download & Complete</p>
@@ -259,7 +267,9 @@
                         @endif
                     </div>
                 </div>
-                @if ($doc->file_path)
+                @if (in_array($doc->document_type, ['accident_fcl', 'non_accident_fcl']))
+                <flux:button wire:click="downloadFcl" size="sm" variant="filled" icon="arrow-down-tray">Download</flux:button>
+                @elseif ($doc->file_path)
                 <flux:button wire:click="downloadDoc({{ $doc->id }})" size="sm" variant="filled" icon="arrow-down-tray">Download</flux:button>
                 @else
                 <flux:button size="sm" variant="outline" icon="arrow-down-tray" disabled>No File</flux:button>
@@ -271,25 +281,30 @@
 
         @if ($requiredDocs->isNotEmpty())
         <p class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">
-            {{ $isEmployerManaged ? 'Upload Digital Copies' : 'Upload Documents' }}
+            {{ $isExistingWorker ? 'Upload Digital Copies' : 'Required Documents' }}
         </p>
         <div class="space-y-4 mb-6">
             @foreach ($requiredDocs as $doc)
             @php $existing = $claim->documents->firstWhere('document_type', $doc->document_type); @endphp
             <div class="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
-                <div class="flex items-center gap-3 mb-3">
+                <div class="flex items-center gap-3 {{ $isExistingWorker ? 'mb-3' : '' }}">
                     <div class="w-9 h-9 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
                         <flux:icon.document-text class="w-5 h-5 text-zinc-500 dark:text-zinc-400" />
                     </div>
                     <div>
                         <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->label }}</p>
-                        @if ($existing?->file_path)
-                        <p class="text-xs text-green-600 dark:text-green-400">Previously submitted — upload to replace</p>
+                        @if ($isExistingWorker)
+                            @if ($existing?->file_path)
+                            <p class="text-xs text-green-600 dark:text-green-400">Previously submitted — upload to replace</p>
+                            @else
+                            <p class="text-xs text-zinc-400">Upload digital/scanned copy</p>
+                            @endif
                         @else
-                        <p class="text-xs text-zinc-400">{{ $isEmployerManaged ? 'Upload digital/scanned copy' : 'No file uploaded yet' }}</p>
+                        <p class="text-xs text-zinc-400">Submit the original copy to CLAB</p>
                         @endif
                     </div>
                 </div>
+                @if ($isExistingWorker)
                 <input
                     type="file"
                     wire:model="uploadedFiles.{{ $doc->document_type }}"
@@ -300,41 +315,32 @@
                            dark:file:bg-zinc-800 dark:file:text-zinc-300"
                 />
                 <div wire:loading wire:target="uploadedFiles.{{ $doc->document_type }}" class="text-xs text-zinc-400 mt-1">Uploading…</div>
+                @endif
             </div>
             @endforeach
         </div>
         @endif
 
-        @if ($isEmployerManaged)
-        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <div class="flex items-start gap-3">
-                <flux:icon.information-circle class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
-                <div>
-                    <p class="font-semibold text-blue-800 dark:text-blue-300 mb-1">Digital Copies Only</p>
-                    <p class="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
-                        CLAB does not require original documents for {{ $insurerLabel }} claims. Please upload scanned or
-                        digital copies above. After resubmitting, remember to also submit your appeal directly to
-                        <strong>{{ $insurerLabel }}</strong> and update the status via the claim detail page.
-                    </p>
-                </div>
-            </div>
-        </div>
+        @if ($isExistingWorker)
+        <flux:callout icon="information-circle" color="lime">
+            <flux:callout.heading>Digital Copies Only</flux:callout.heading>
+            <flux:callout.text>
+                CLAB does not require original documents. Please upload scanned or digital copies above.<br><br>
+                After resubmitting, remember to also submit your appeal directly to <strong>{{ $insurerLabel }}</strong> and update the status via the claim detail page.
+            </flux:callout.text>
+        </flux:callout>
         @else
-        <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-            <div class="flex items-start gap-3">
-                <flux:icon.map-pin class="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                <div>
-                    <p class="font-semibold text-amber-800 dark:text-amber-300 mb-1">Send Completed Documents To:</p>
-                    <p class="text-sm text-amber-700 dark:text-amber-400 leading-relaxed">
-                        Construction Labour Exchange Centre Berhad (CLAB)<br>
-                        Level 2, Annexe Block, Menara Milenium,<br>
-                        No. 8, Jalan Damanlela,<br>
-                        Pusat Bandar Damansara,<br>
-                        50490 Kuala Lumpur.
-                    </p>
-                </div>
-            </div>
-        </div>
+        <flux:callout icon="map-pin" color="lime">
+            <flux:callout.heading>Send Original Documents To</flux:callout.heading>
+            <flux:callout.text>
+                Construction Labour Exchange Centre Berhad (CLAB)<br>
+                Level 2, Annexe Block, Menara Milenium,<br>
+                No. 8, Jalan Damanlela,<br>
+                Pusat Bandar Damansara,<br>
+                50490 Kuala Lumpur.<br><br>
+                Once submitted, our admin team will process your appeal and mark each document as received upon arrival.
+            </flux:callout.text>
+        </flux:callout>
         @endif
         @endif
 
