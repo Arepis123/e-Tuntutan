@@ -102,7 +102,7 @@
                         </div>
                     </flux:table.cell>
                     <flux:table.cell>
-                        <flux:badge color="{{ match($claim->claim_type) { 'fwhs' => 'blue', 'green_card' => 'green', 'perkeso' => 'yellow', default => 'zinc' } }}" size="sm"
+                        <flux:badge color="{{ match($claim->claim_type) { 'fwhs' => 'zink', 'green_card' => 'zink', 'perkeso' => 'zink', default => 'zinc' } }}" size="sm"
                             icon="{{ match($claim->claim_type) { 'fwhs' => 'building-office-2', 'green_card' => 'credit-card', 'perkeso' => 'shield-check', default => 'tag' } }}">
                             {{ $claim->getClaimTypeLabel() }}
                         </flux:badge>

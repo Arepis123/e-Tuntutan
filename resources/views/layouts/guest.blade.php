@@ -39,9 +39,6 @@
 
                 {{-- Hero text --}}
                 <div>
-                    <h1 class="text-4xl xl:text-5xl font-bold text-white leading-tight mb-4">
-                        Foreign Worker<br>Insurance Claims
-                    </h1>
                     <p class="text-sky-100 text-lg max-w-md">
                         Streamlined claim management for FWHS, Green Card, and PERKESO — from submission to closure.
                     </p>
@@ -70,14 +67,6 @@
 
         {{-- Right: Auth Card --}}
         <div class="w-full lg:w-1/3 flex flex-col items-center justify-center p-6 sm:p-10 bg-white dark:bg-zinc-900 min-h-screen">
-
-            {{-- Mobile brand --}}
-            <div class="lg:hidden flex items-center gap-3 mb-8">
-                <div class="w-9 h-9 rounded-xl bg-zinc-900 dark:bg-zinc-700 flex items-center justify-center">
-                    <flux:icon.document-text class="w-5 h-5 text-white" />
-                </div>
-                <span class="text-lg font-semibold text-zinc-900 dark:text-white">e-Tuntutan</span>
-            </div>
 
             <div class="w-full max-w-sm">
                 {{ $slot }}
