@@ -92,6 +92,9 @@ class ClaimCreate extends Component
     public array $downloadedDocIds = [];
     public bool $fclDownloaded = false;
 
+    // Success modal
+    public bool $showSuccessModal = false;
+
     protected function rules(): array
     {
         $rules = [
@@ -366,8 +369,12 @@ class ClaimCreate extends Component
             Notification::send($pics, new ClaimSubmittedNotification($claim));
         });
 
-        session()->flash('success', 'Claim submitted successfully!');
-        $this->redirect(route('claims.index'), navigate: true);
+        $this->showSuccessModal = true;
+    }
+
+    public function goToClaims(): mixed
+    {
+        return $this->redirect(route('claims.index'), navigate: true);
     }
 
     public function downloadFcl(): mixed
@@ -438,19 +445,13 @@ class ClaimCreate extends Component
 
     protected function getDocumentConfigs(): \Illuminate\Support\Collection
     {
-        if (! $this->claimType || ! $this->claimCategory) {
-            return collect();
-        }
-
-        $incidentType = $this->claimCategory === 'death' ? null : ($this->incidentType ?: null);
-
-        if ($this->claimCategory === 'hospitalization' && ! $incidentType) {
+        if (! $this->claimType || ! $this->claimCategory || ! $this->incidentType) {
             return collect();
         }
 
         return \App\Models\DocumentConfig::where('claim_type', $this->claimType)
             ->where('claim_category', $this->claimCategory)
-            ->where('incident_type', $incidentType)
+            ->where('incident_type', $this->incidentType)
             ->orderBy('sort_order')
             ->get();
     }

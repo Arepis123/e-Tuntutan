@@ -404,6 +404,25 @@
         </div>
     </flux:card>
 
+    {{-- Success Modal --}}
+    <flux:modal wire:model="showSuccessModal" class="max-w-md w-full" :dismissible="false">
+        <div class="flex flex-col items-center text-center p-2">
+            <div class="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center mb-4">
+                <flux:icon.check-circle class="w-9 h-9 text-green-600 dark:text-green-400" />
+            </div>
+            <flux:heading size="lg" class="mb-2">Claim Submitted!</flux:heading>
+            <flux:text class="text-zinc-500 dark:text-zinc-400 mb-2">
+                Your claim application has been successfully submitted.
+            </flux:text>
+            <flux:text class="text-zinc-500 dark:text-zinc-400 mb-6">
+                A notification email has been sent to our Person-In-Charge (PIC). They will review your application and contact you if additional information is required.
+            </flux:text>
+            <flux:button wire:click="goToClaims" variant="primary" icon="clipboard-document-list" class="w-full">
+                View My Claims
+            </flux:button>
+        </div>
+    </flux:modal>
+
     {{-- Navigation Buttons --}}
     <div class="flex justify-between mt-6">
         @if ($step > 1)

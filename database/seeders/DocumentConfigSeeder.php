@@ -33,10 +33,15 @@ class DocumentConfigSeeder extends Seeder
         }
 
         foreach (['green_card', 'perkeso'] as $type) {
-            $rows[] = $base + ['claim_type' => $type, 'claim_category' => 'death', 'incident_type' => null, 'document_type' => 'death_cert',     'label' => 'Death Certificate',     'is_required' => true, 'is_downloadable' => false, 'sort_order' => 1];
-            $rows[] = $base + ['claim_type' => $type, 'claim_category' => 'death', 'incident_type' => null, 'document_type' => 'body_receipt',   'label' => 'Body Delivery Receipt', 'is_required' => true, 'is_downloadable' => false, 'sort_order' => 2];
-            $rows[] = $base + ['claim_type' => $type, 'claim_category' => 'death', 'incident_type' => null, 'document_type' => 'police_report',  'label' => 'Police Report',         'is_required' => true, 'is_downloadable' => false, 'sort_order' => 3];
-            $rows[] = $base + ['claim_type' => $type, 'claim_category' => 'death', 'incident_type' => null, 'document_type' => 'embassy_letter', 'label' => 'Embassy Letter',        'is_required' => true, 'is_downloadable' => false, 'sort_order' => 4];
+            foreach (['accident', 'non_accident'] as $incident) {
+                $fclType  = $incident === 'accident' ? 'accident_fcl'     : 'non_accident_fcl';
+                $fclLabel = $incident === 'accident' ? 'Accident FCL Form' : 'Non-Accident FCL Form';
+                $rows[] = $base + ['claim_type' => $type, 'claim_category' => 'death', 'incident_type' => $incident, 'document_type' => $fclType,         'label' => $fclLabel,               'is_required' => true, 'is_downloadable' => true,  'sort_order' => 1];
+                $rows[] = $base + ['claim_type' => $type, 'claim_category' => 'death', 'incident_type' => $incident, 'document_type' => 'death_cert',     'label' => 'Death Certificate',     'is_required' => true, 'is_downloadable' => false, 'sort_order' => 2];
+                $rows[] = $base + ['claim_type' => $type, 'claim_category' => 'death', 'incident_type' => $incident, 'document_type' => 'body_receipt',   'label' => 'Body Delivery Receipt', 'is_required' => true, 'is_downloadable' => false, 'sort_order' => 3];
+                $rows[] = $base + ['claim_type' => $type, 'claim_category' => 'death', 'incident_type' => $incident, 'document_type' => 'police_report',  'label' => 'Police Report',         'is_required' => true, 'is_downloadable' => false, 'sort_order' => 4];
+                $rows[] = $base + ['claim_type' => $type, 'claim_category' => 'death', 'incident_type' => $incident, 'document_type' => 'embassy_letter', 'label' => 'Embassy Letter',        'is_required' => true, 'is_downloadable' => false, 'sort_order' => 5];
+            }
         }
 
         DocumentConfig::insert($rows);
