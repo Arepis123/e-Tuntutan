@@ -114,12 +114,8 @@
         <td class="lbl" style="padding: 0 6px;">to</td>
         <td class="val" style="width:60px;">{{ $workingHourTo ? \Carbon\Carbon::parse($workingHourTo)->format('h:i A') : '' }}</td>
         <td class="gap2"></td>
-        <td class="lbl">h) Facilities :</td>
-        <td class="val">
-            Meals: <strong>{{ $facilityMeals === '1' ? 'Yes' : ($facilityMeals === '0' ? 'No' : '—') }}</strong> &nbsp;
-            Accommodation: <strong>{{ $facilityAccommodation === '1' ? 'Yes' : ($facilityAccommodation === '0' ? 'No' : '—') }}</strong> &nbsp;
-            Transportation: <strong>{{ $facilityTransportation === '1' ? 'Yes' : ($facilityTransportation === '0' ? 'No' : '—') }}</strong>
-        </td>
+        <td style="width:100%;"></td>
+        {{-- h) Facilities hidden for now --}}
     </tr>
 </table>
 

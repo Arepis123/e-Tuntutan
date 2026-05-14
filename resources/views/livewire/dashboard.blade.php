@@ -62,12 +62,12 @@
                 <flux:table.column>Worker</flux:table.column>
                 <flux:table.column>Type</flux:table.column>
                 <flux:table.column>Status</flux:table.column>
+                <flux:table.column>Days In Progress</flux:table.column>
                 <flux:table.column>Date</flux:table.column>
-                <flux:table.column></flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
                 @forelse ($recentClaims as $claim)
-                <flux:table.row>
+                <flux:table.row href="{{ route('claims.show', $claim) }}" wire:navigate class="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
                     <flux:table.cell class="font-mono text-sm">{{ $claim->claim_number }}</flux:table.cell>
                     <flux:table.cell>{{ $claim->worker->name }}</flux:table.cell>
                     <flux:table.cell>{{ $claim->getClaimTypeLabel() }}</flux:table.cell>
@@ -76,12 +76,20 @@
                             {{ ucfirst(str_replace('_', ' ', $claim->status)) }}
                         </flux:badge>
                     </flux:table.cell>
-                    <flux:table.cell class="text-zinc-500 dark:text-zinc-400 text-sm">{{ $claim->created_at->format('d/m/Y') }}</flux:table.cell>
                     <flux:table.cell>
-                        <flux:button href="{{ route('claims.show', $claim) }}" variant="ghost" size="sm" wire:navigate>
-                            View
-                        </flux:button>
+                        @if ($claim->in_progress_at)
+                            @php
+                                $until = $claim->status === 'closed' ? $claim->closed_at : now();
+                                $days  = (int) $claim->in_progress_at->diffInDays($until);
+                            @endphp
+                            <flux:badge color="{{ $days >= 60 ? 'red' : ($days >= 30 ? 'yellow' : 'green') }}" size="sm">
+                                {{ $days }} {{ Str::plural('day', $days) }}
+                            </flux:badge>
+                        @else
+                            <span class="text-zinc-400 text-sm">—</span>
+                        @endif
                     </flux:table.cell>
+                    <flux:table.cell class="text-zinc-500 dark:text-zinc-400 text-sm">{{ $claim->created_at->format('d/m/Y') }}</flux:table.cell>
                 </flux:table.row>
                 @empty
                 <flux:table.row>

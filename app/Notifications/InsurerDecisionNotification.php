@@ -3,14 +3,12 @@
 namespace App\Notifications;
 
 use App\Models\Claim;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Models\ClaimEmailLog;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class InsurerDecisionNotification extends Notification implements ShouldQueue
+class InsurerDecisionNotification extends Notification
 {
-    use Queueable;
 
     public function __construct(public readonly Claim $claim) {}
 
@@ -25,9 +23,12 @@ class InsurerDecisionNotification extends Notification implements ShouldQueue
         $approved = $claim->insurer_decision === 'approved';
         $picEmail = $claim->company_pic_email;
         $picName  = $claim->company_pic_name ?: $notifiable->name;
+        $subject  = "[e-Tuntutan] Insurer Decision: {$claim->claim_number} — " . ($approved ? 'Approved' : 'Not Approved');
+
+        ClaimEmailLog::record($claim, $picEmail ?: $notifiable->email, $picName, $subject, 'Insurer Decision: ' . ($approved ? 'Approved' : 'Not Approved'));
 
         $mail = (new MailMessage)
-            ->subject("[e-Tuntutan] Insurer Decision: {$claim->claim_number} — " . ($approved ? 'Approved' : 'Not Approved'))
+            ->subject($subject)
             ->greeting("Dear {$picName},")
             ->line("We have received a decision from the insurance provider (Liberty) regarding your claim application.")
             ->line("**Claim No.:** {$claim->claim_number}")
@@ -43,10 +44,6 @@ class InsurerDecisionNotification extends Notification implements ShouldQueue
 
         $mail->action('View Claim', route('claims.show', $claim))
              ->salutation('Thank you, e-Tuntutan CLAB');
-
-        if ($picEmail) {
-            $mail->to($picEmail, $picName);
-        }
 
         return $mail;
     }

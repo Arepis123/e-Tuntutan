@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Claim;
+use App\Models\ClaimEmailLog;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -26,11 +27,9 @@ class MissingDocumentsNotification extends Notification
         $picEmail = $this->claim->company_pic_email;
         $picName  = $this->claim->company_pic_name ?: $notifiable->name;
 
-        $mail = (new MailMessage)->subject($this->subject);
+        ClaimEmailLog::record($this->claim, $picEmail ?: $notifiable->email, $picName, $this->subject, 'Custom Email');
 
-        if ($picEmail) {
-            $mail->to($picEmail, $picName);
-        }
+        $mail = (new MailMessage)->subject($this->subject);
 
         if ($this->cc) {
             $mail->cc($this->cc);

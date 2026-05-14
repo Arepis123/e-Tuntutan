@@ -190,6 +190,23 @@
                         </dd>
                     </div>
                     @endif
+                    @if ($claim->claim_type === 'perkeso' && !empty($claim->perkeso_schemes))
+                    @php
+                        $schemeLabels = [
+                            'skim_bencana_kerja'      => 'Skim Bencana Kerja',
+                            'skim_pengurusan_jenazah' => 'Skim Pengurusan Jenazah',
+                            'skim_luar_waktu_bekerja' => 'Skim Luar Waktu Bekerja',
+                        ];
+                    @endphp
+                    <div class="col-span-2 sm:col-span-2">
+                        <dt class="text-zinc-500 dark:text-zinc-400 mb-1">PERKESO Claim Category</dt>
+                        <dd class="flex flex-wrap gap-1">
+                            @foreach($claim->perkeso_schemes as $scheme)
+                            <flux:badge size="sm" color="blue">{{ $schemeLabels[$scheme] ?? $scheme }}</flux:badge>
+                            @endforeach
+                        </dd>
+                    </div>
+                    @endif
                     <div>
                         <dt class="text-zinc-500 dark:text-zinc-400">{{ $claim->incident_type === 'non_accident' ? 'Date of Illness' : 'Date of Accident' }}</dt>
                         <dd class="font-medium text-zinc-900 dark:text-white mt-1">{{ $claim->incident_date?->format('d M Y') ?? '—' }}</dd>
@@ -1023,6 +1040,32 @@
                 </div>
                 @endif
             </flux:card>
+
+            {{-- Email Tracker (admin / PIC only) --}}
+            @role('admin|pic')
+            <flux:card class="dark:bg-zinc-900">
+                <flux:heading size="lg" class="mb-4">Email Tracker</flux:heading>
+                @php $emailLogs = $claim->emailLogs; @endphp
+                @if ($emailLogs->isEmpty())
+                <flux:text class="text-sm text-zinc-400 dark:text-zinc-500">No emails sent yet.</flux:text>
+                @else
+                <div class="space-y-3">
+                    @foreach ($emailLogs as $log)
+                    <div class="flex gap-3 text-sm">
+                        <div class="mt-0.5 w-7 h-7 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                            <flux:icon.envelope class="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-zinc-800 dark:text-zinc-100 leading-snug">{{ $log->event }}</p>
+                            <p class="text-zinc-500 dark:text-zinc-400 truncate">To: {{ $log->to_name ? $log->to_name.' &lt;'.$log->to_email.'&gt;' : $log->to_email }}</p>
+                            <p class="text-zinc-400 dark:text-zinc-500 text-xs mt-0.5">{{ $log->sent_at->format('d M Y, g:i A') }}</p>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+                @endif
+            </flux:card>
+            @endrole
         </div>
     </div>
 

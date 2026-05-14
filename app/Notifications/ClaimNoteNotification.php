@@ -3,15 +3,13 @@
 namespace App\Notifications;
 
 use App\Models\Claim;
+use App\Models\ClaimEmailLog;
 use App\Models\User;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ClaimNoteNotification extends Notification implements ShouldQueue
+class ClaimNoteNotification extends Notification
 {
-    use Queueable;
 
     public function __construct(
         public readonly Claim $claim,
@@ -28,9 +26,12 @@ class ClaimNoteNotification extends Notification implements ShouldQueue
         $claim    = $this->claim;
         $picEmail = $claim->company_pic_email;
         $picName  = $claim->company_pic_name ?: $notifiable->name;
+        $subject  = "[e-Tuntutan] New Message on Claim: {$claim->claim_number}";
+
+        ClaimEmailLog::record($claim, $picEmail ?: $notifiable->email, $picName, $subject, 'New Note');
 
         $mail = (new MailMessage)
-            ->subject("[e-Tuntutan] New Message on Claim: {$claim->claim_number}")
+            ->subject($subject)
             ->greeting("Dear {$picName},")
             ->line("A new message has been posted on claim **{$claim->claim_number}** by **{$this->author->name}**.")
             ->line("**Claim No.:** {$claim->claim_number}")
@@ -38,10 +39,6 @@ class ClaimNoteNotification extends Notification implements ShouldQueue
             ->line("Please log in to read the message and reply if necessary.")
             ->action('View Claim', route('claims.show', $claim))
             ->salutation('Thank you, e-Tuntutan CLAB');
-
-        if ($picEmail) {
-            $mail->to($picEmail, $picName);
-        }
 
         return $mail;
     }

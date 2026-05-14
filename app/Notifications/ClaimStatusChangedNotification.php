@@ -3,14 +3,12 @@
 namespace App\Notifications;
 
 use App\Models\Claim;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Models\ClaimEmailLog;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ClaimStatusChangedNotification extends Notification implements ShouldQueue
+class ClaimStatusChangedNotification extends Notification
 {
-    use Queueable;
 
     public function __construct(public readonly Claim $claim)
     {
@@ -32,6 +30,8 @@ class ClaimStatusChangedNotification extends Notification implements ShouldQueue
         };
 
         $subject = "[e-Tuntutan] Status Updated: {$claim->claim_number}";
+
+        ClaimEmailLog::record($claim, $notifiable->email, $notifiable->name, $subject, "Status Updated → {$status}");
 
         $mail = (new MailMessage)
             ->subject($subject)

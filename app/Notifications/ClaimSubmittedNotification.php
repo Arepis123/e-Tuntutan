@@ -3,14 +3,12 @@
 namespace App\Notifications;
 
 use App\Models\Claim;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Models\ClaimEmailLog;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ClaimSubmittedNotification extends Notification implements ShouldQueue
+class ClaimSubmittedNotification extends Notification
 {
-    use Queueable;
 
     public function __construct(public readonly Claim $claim)
     {
@@ -23,10 +21,13 @@ class ClaimSubmittedNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $claim = $this->claim;
+        $claim   = $this->claim;
+        $subject = "[e-Tuntutan] New Claim: {$claim->claim_number}";
+
+        ClaimEmailLog::record($claim, $notifiable->email, $notifiable->name, $subject, 'Claim Submitted');
 
         return (new MailMessage)
-            ->subject("[e-Tuntutan] New Claim: {$claim->claim_number}")
+            ->subject($subject)
             ->greeting("Dear {$notifiable->name},")
             ->line("A new claim has been submitted and requires your attention.")
             ->line("**Claim No.:** {$claim->claim_number}")

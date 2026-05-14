@@ -79,6 +79,17 @@
         </flux:radio.group>
 
         @error('claimCategory') <p class="text-red-500 dark:text-red-400 text-sm mb-4">{{ $message }}</p> @enderror
+
+        @if ($claimType === 'perkeso')
+        <flux:checkbox.group wire:model="perkesoSchemes" label="PERKESO Claim Category" variant="cards" :indicator="false" class="mb-6 max-sm:flex-col">
+            <flux:checkbox value="skim_bencana_kerja" icon="shield-check" label="Skim Bencana Kerja" />
+            <flux:checkbox value="skim_pengurusan_jenazah" icon="user-circle" label="Skim Pengurusan Jenazah" />
+            <flux:checkbox value="skim_luar_waktu_bekerja" icon="clock" label="Skim Luar Waktu Bekerja" />
+        </flux:checkbox.group>
+
+        @error('perkesoSchemes') <p class="text-red-500 dark:text-red-400 text-sm mb-4">{{ $message }}</p> @enderror
+        @endif
+
         @endif
 
         {{-- Step 2: Worker Info --}}
@@ -165,15 +176,7 @@
 
         </div>
 
-        {{-- Facilities Provided --}}
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-            @foreach(['facilityMeals' => 'Meals', 'facilityAccommodation' => 'Accommodation', 'facilityTransportation' => 'Transportation'] as $field => $label)
-            <flux:select wire:model="{{ $field }}" variant="listbox" label="{{ $label }}" placeholder="Select...">
-                <flux:select.option value="1">Yes</flux:select.option>
-                <flux:select.option value="0">No</flux:select.option>
-            </flux:select>
-            @endforeach
-        </div>
+        {{-- Facilities Provided (hidden for now) --}}
 
         <flux:separator class="my-6"/>
 

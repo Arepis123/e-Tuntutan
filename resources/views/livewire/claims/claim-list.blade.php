@@ -80,37 +80,39 @@
 
         <flux:table>
             <flux:table.columns>
-                <flux:table.column>Claim No.</flux:table.column>
-                <flux:table.column>Company Name</flux:table.column>
-                <flux:table.column>Worker</flux:table.column>
-                <flux:table.column>Type</flux:table.column>
-                <flux:table.column>Category</flux:table.column>
-                <flux:table.column>Status</flux:table.column>
-                <flux:table.column>Submitted</flux:table.column>
-                <flux:table.column></flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'claim_number'" :direction="$sortDirection" wire:click="sort('claim_number')">Claim No.</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'employer_name'" :direction="$sortDirection" wire:click="sort('employer_name')">Company Name</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'worker_name'" :direction="$sortDirection" wire:click="sort('worker_name')">Worker</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'worker_type'" :direction="$sortDirection" wire:click="sort('worker_type')">Worker Type</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'claim_type'" :direction="$sortDirection" wire:click="sort('claim_type')">Type</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'claim_category'" :direction="$sortDirection" wire:click="sort('claim_category')">Category</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">Status</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'in_progress_at'" :direction="$sortDirection" wire:click="sort('in_progress_at')">Days In Progress</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'created_at'" :direction="$sortDirection" wire:click="sort('created_at')">Submitted</flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
                 @forelse ($claims as $claim)
-                <flux:table.row wire:key="claim-{{ $claim->id }}" class="hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-colors cursor-pointer">
+                <flux:table.row wire:key="claim-{{ $claim->id }}" class="hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-colors cursor-pointer" x-on:click="Livewire.navigate('{{ route('claims.show', $claim) }}')"  >
                     <flux:table.cell class="font-mono text-sm font-medium text-zinc-900 dark:text-white">
                         {{ $claim->claim_number }}
                     </flux:table.cell>
-                    <flux:table.cell class="font-medium text-zinc-900 dark:text-white uppercase">
-                        {{ $claim->worker->employer_name ?? '—' }}
+                    <flux:table.cell class="font-medium text-zinc-900 dark:text-white uppercase truncate max-w-[8rem] sm:max-w-[10rem] lg:max-w-[12rem]">                      
+                        {{ $claim->worker->employer_name ?? '—' }}                        
                     </flux:table.cell>
                     <flux:table.cell>
-                        <div>
-                            <p class="font-medium text-zinc-900 dark:text-white">{{ $claim->worker->name }}</p>
-                            <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $claim->worker->passport_number }}</p>
-                        </div>
+                        <p class="font-medium text-zinc-900 dark:text-white">{{ $claim->worker->name }}</p>
+                        <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $claim->worker->passport_number }}</p>
                     </flux:table.cell>
                     <flux:table.cell>
-                        <flux:badge color="{{ match($claim->claim_type) { 'fwhs' => 'blue', 'green_card' => 'green', 'perkeso' => 'yellow', default => 'zinc' } }}" size="sm"
+                            {{ $claim->worker->worker_type === 'outsource' ? 'Outsource' : 'Existing' }}
+                    </flux:table.cell>
+                    <flux:table.cell>
+                        <flux:badge color="{{ match($claim->claim_type) { 'fwhs' => 'zinc', 'green_card' => 'zinc', 'perkeso' => 'zinc', default => 'zinc' } }}" size="sm"
                             icon="{{ match($claim->claim_type) { 'fwhs' => 'building-office-2', 'green_card' => 'credit-card', 'perkeso' => 'shield-check', default => 'tag' } }}">
                             {{ $claim->getClaimTypeLabel() }}
                         </flux:badge>
                     </flux:table.cell>
-                    <flux:table.cell class="text-zinc-600 dark:text-zinc-400">
+                    <flux:table.cell>
                         {{ $claim->claim_category === 'hospitalization' ? 'Hospitalization' : 'Death' }}
                     </flux:table.cell>
                     <flux:table.cell>
@@ -123,18 +125,26 @@
                             } }}
                         </flux:badge>
                     </flux:table.cell>
-                    <flux:table.cell class="text-zinc-500 dark:text-zinc-400 text-sm">
-                        {{ $claim->submitted_at?->format('d/m/Y') ?? $claim->created_at->format('d/m/Y') }}
+                    <flux:table.cell>
+                        @if ($claim->in_progress_at)
+                            @php
+                                $until = $claim->status === 'closed' ? $claim->closed_at : now();
+                                $days  = (int) $claim->in_progress_at->diffInDays($until);
+                            @endphp
+                            <flux:badge color="{{ $days >= 60 ? 'red' : ($days >= 30 ? 'yellow' : 'green') }}" size="sm">
+                                {{ $days }} {{ Str::plural('day', $days) }}
+                            </flux:badge>
+                        @else
+                            <span class="text-zinc-400 text-sm">—</span>
+                        @endif
                     </flux:table.cell>
                     <flux:table.cell>
-                        <flux:button href="{{ route('claims.show', $claim) }}" variant="filled" size="sm" wire:navigate>
-                            View
-                        </flux:button>
+                        {{ $claim->submitted_at?->format('d/m/Y') ?? $claim->created_at->format('d/m/Y') }}
                     </flux:table.cell>
                 </flux:table.row>
                 @empty
                 <flux:table.row>
-                    <flux:table.cell colspan="8" class="text-center py-12 text-zinc-400">
+                    <flux:table.cell colspan="9" class="text-center py-12 text-zinc-400">
                         <flux:icon.document-magnifying-glass class="w-12 h-12 mx-auto mb-3 opacity-50" />
                         <p>No claims found.</p>
                     </flux:table.cell>

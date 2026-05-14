@@ -26,11 +26,15 @@ class ClaimCreate extends Component
     // Step 1: Claim type
     public string $claimType = '';
     public string $claimCategory = '';
+    public array  $perkesoSchemes = [];
 
     public function updatedClaimType(): void
     {
         if ($this->claimType === 'fwhs' && $this->claimCategory === 'death') {
             $this->claimCategory = '';
+        }
+        if ($this->claimType !== 'perkeso') {
+            $this->perkesoSchemes = [];
         }
     }
 
@@ -236,13 +240,15 @@ class ClaimCreate extends Component
             if (! $this->validateWorkerStep()) return;
         } else {
             match ($this->step) {
-                1 => $this->validate([
+                1 => $this->validate(array_merge([
                     'claimType'     => 'required|in:fwhs,green_card,perkeso',
                     'claimCategory' => [
                         'required',
                         $this->claimType === 'fwhs' ? 'in:hospitalization' : 'in:hospitalization,death',
                     ],
-                ]),
+                ], $this->claimType === 'perkeso' ? [
+                    'perkesoSchemes' => 'required|array|min:1',
+                ] : [])),
                 3 => $this->validate($this->step3Rules()),
                 default => null,
             };
@@ -325,6 +331,7 @@ class ClaimCreate extends Component
                 'user_id'                => Auth::id(),
                 'claim_type'             => $this->claimType,
                 'claim_category'         => $this->claimCategory,
+                'perkeso_schemes'        => $this->claimType === 'perkeso' ? $this->perkesoSchemes : null,
                 'incident_type'          => $this->incidentType,
                 'status'                 => 'open',
                 'incident_date'          => $this->incidentDate,

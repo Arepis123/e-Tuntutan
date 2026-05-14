@@ -18,6 +18,7 @@ class Claim extends Model
         'user_id',
         'claim_type',
         'claim_category',
+        'perkeso_schemes',
         'incident_type',
         'status',
         'forwarded_to',
@@ -27,6 +28,7 @@ class Claim extends Model
         'admission_date',
         'discharge_date',
         'submitted_at',
+        'in_progress_at',
         'documents_received_at',
         'documents_received_by',
         'submitted_to_insurer_at',
@@ -69,10 +71,12 @@ class Claim extends Model
     ];
 
     protected $casts = [
+        'perkeso_schemes' => 'array',
         'incident_date'  => 'date',
         'admission_date' => 'date',
         'discharge_date' => 'date',
         'submitted_at'            => 'datetime',
+        'in_progress_at'          => 'datetime',
         'documents_received_at'   => 'datetime',
         'submitted_to_insurer_at' => 'datetime',
         'insurer_decided_at'      => 'datetime',
@@ -122,6 +126,11 @@ class Claim extends Model
         return $this->hasMany(ClaimNote::class);
     }
 
+    public function emailLogs(): HasMany
+    {
+        return $this->hasMany(ClaimEmailLog::class)->orderBy('sent_at', 'desc');
+    }
+
     public function getStatusColorAttribute(): string
     {
         return match ($this->status) {
@@ -157,6 +166,12 @@ class Claim extends Model
                 '0',
                 STR_PAD_LEFT
             );
+        });
+
+        static::updating(function (Claim $claim) {
+            if ($claim->isDirty('status') && $claim->status === 'in_progress' && ! $claim->in_progress_at) {
+                $claim->in_progress_at = now();
+            }
         });
     }
 }

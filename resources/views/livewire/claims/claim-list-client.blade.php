@@ -80,13 +80,13 @@
 
         <flux:table>
             <flux:table.columns>
-                <flux:table.column>Claim No.</flux:table.column>
-                <flux:table.column>Worker</flux:table.column>
-                <flux:table.column>Type</flux:table.column>
-                <flux:table.column>Category</flux:table.column>
-                <flux:table.column>Status</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'claim_number'" :direction="$sortDirection" wire:click="sort('claim_number')">Claim No.</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'worker_name'" :direction="$sortDirection" wire:click="sort('worker_name')">Worker</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'claim_type'" :direction="$sortDirection" wire:click="sort('claim_type')">Type</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'claim_category'" :direction="$sortDirection" wire:click="sort('claim_category')">Category</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">Status</flux:table.column>
                 <flux:table.column>Progress</flux:table.column>
-                <flux:table.column>Submitted</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'created_at'" :direction="$sortDirection" wire:click="sort('created_at')">Submitted</flux:table.column>
                 <flux:table.column></flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
