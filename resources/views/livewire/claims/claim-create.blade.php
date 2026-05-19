@@ -162,7 +162,9 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
 
             {{-- Date of Employment --}}
-            <flux:date-picker locale="en-GB" wire:model="dateOfEmployment" with-today label="Date of Employment" type="input"/>
+            <flux:field>
+                <flux:date-picker locale="en-GB" wire:model="dateOfEmployment" with-today label="Date of Employment" type="input" required />
+            </flux:field>
 
             {{-- Working Hours --}}
             <flux:field>
@@ -183,8 +185,8 @@
         {{-- Company Details --}}
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Company Details</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <flux:input wire:model="tinNo" label="Tax Identification No. (TIN)" placeholder="e.g. C12345678900" />
-            <flux:input wire:model="sstNo" label="SST No." placeholder="e.g. W10-1234-12345678" />
+            <flux:input wire:model="tinNo" label="Tax Identification No. (TIN)" placeholder="e.g. C12345678900" required />
+            <flux:input wire:model="sstNo" label="SST No." placeholder="e.g. W10-1234-12345678" required />
         </div>
 
         <flux:separator class="my-6"/>
@@ -192,9 +194,9 @@
         {{-- Company PIC --}}
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Person In Charge (Company)</p>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-            <flux:input wire:model="companyPicName" label="Name" placeholder="Full name" />
-            <flux:input wire:model="companyPicPhone" label="Phone Number" placeholder="e.g. 0123456789" />
-            <flux:input wire:model="companyPicEmail" label="Email" type="email" placeholder="e.g. pic@company.com" />
+            <flux:input wire:model="companyPicName" label="Name" placeholder="Full name" required />
+            <flux:input wire:model="companyPicPhone" label="Phone Number" placeholder="e.g. 0123456789" required />
+            <flux:input wire:model="companyPicEmail" label="Email" type="email" placeholder="e.g. pic@company.com" required />
         </div>
         @endif
         @endif
@@ -202,7 +204,7 @@
         {{-- Step 3: Incident Details --}}
         @if ($step === 3)
         <flux:heading size="lg" class="mb-1">Step 3: Incident Details</flux:heading>
-        <flux:subheading class="mb-6">Based on FCL Form (CLAB/SOP/08/23)</flux:subheading>
+        <flux:subheading class="mb-6">Based on FCL Form</flux:subheading>
 
         {{-- Incident Type --}}
         <flux:radio.group wire:model.live="incidentType" label="Incident Type" variant="cards" :indicator="false" class="mb-6 max-sm:flex-col">
@@ -231,18 +233,18 @@
                 </label>
                 @endforeach
             </div>
-            @error('injuryTypes') <flux:error>{{ $message }}</flux:error> @enderror
+            <flux:error name="injuryTypes" />
         </flux:field>
 
         @if (in_array('others', $injuryTypes))
         <div class="mb-4">
-            <flux:input wire:model="injuryTypeOther" label="Specify Other Injury" placeholder="Describe the injury type" />
+            <flux:input wire:model="injuryTypeOther" label="Specify Other Injury" placeholder="Describe the injury type" required />
         </div>
         @endif
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <flux:textarea wire:model="injuryDescription" label="Description of Injury" rows="3" class="sm:col-span-2" required />
-            <flux:input wire:model="hospitalName" label="Hospital / Clinic Name" class="sm:col-span-2" />
+            <flux:input wire:model="hospitalName" label="Hospital / Clinic Name" class="sm:col-span-2" required />
         </div>
         @endif
 
@@ -270,18 +272,18 @@
             </flux:field>
 
             @if ($isWorkRelated == '1')
-            <flux:textarea wire:model="workRelatedDescription" label="Work-Related Details" placeholder="Describe how the illness is work-related" rows="2" class="sm:col-span-2" />
+            <flux:textarea wire:model="workRelatedDescription" label="Work-Related Details" placeholder="Describe how the illness is work-related" rows="2" class="sm:col-span-2" required />
             @endif
 
             <flux:textarea wire:model="incidentDescription" label="Description of Disease" rows="3" class="sm:col-span-2" required />
-            <flux:input wire:model="hospitalName" label="Hospital / Clinic Name" class="sm:col-span-2" />
+            <flux:input wire:model="hospitalName" label="Hospital / Clinic Name" class="sm:col-span-2" required />
         </div>
         @endif
 
         @if ($claimCategory === 'hospitalization' && $incidentType)
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <flux:date-picker locale="en-GB" wire:model="admissionDate" label="Admission Date" with-today type="input" required />
-            <flux:date-picker locale="en-GB" wire:model="dischargeDate" label="Discharge Date" with-today type="input" />
+            <flux:date-picker locale="en-GB" wire:model="dischargeDate" label="Discharge Date" with-today type="input" required />
         </div>
         @endif
 

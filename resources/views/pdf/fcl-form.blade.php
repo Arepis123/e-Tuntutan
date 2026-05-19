@@ -227,14 +227,14 @@
         </td>
         <td class="gap"></td>
         <td class="lbl">Insurance Policy No. (No Polisi) :</td>
-        <td class="val"></td>
+        <td class="val">{{ $insurancePolicyNo ?? '' }}</td>
     </tr>
 </table>
 @else
 <table class="fields" style="margin-bottom:8px;">
     <tr>
         <td class="lbl">Insurance Policy No. (No Polisi) :</td>
-        <td class="val"></td>
+        <td class="val">{{ $insurancePolicyNo ?? '' }}</td>
     </tr>
 </table>
 @endif

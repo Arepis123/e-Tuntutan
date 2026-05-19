@@ -123,23 +123,33 @@ class ClaimCreate extends Component
             'incidentType'        => 'required|in:accident,non_accident',
             'incidentDate'        => 'required|date',
             'incidentDescription' => 'required|min:10',
+            'hospitalName'        => 'required|string|max:255',
         ];
 
         if ($this->incidentType === 'accident') {
-            $rules['incidentTime']     = 'required';
-            $rules['incidentLocation'] = 'required|string';
-            $rules['injuryTypes']      = 'required|array|min:1';
+            $rules['incidentTime']      = 'required';
+            $rules['incidentLocation']  = 'required|string';
+            $rules['injuryTypes']       = 'required|array|min:1';
             $rules['injuryDescription'] = 'required|min:5';
+
+            if (in_array('others', $this->injuryTypes)) {
+                $rules['injuryTypeOther'] = 'required|string|max:255';
+            }
         }
 
         if ($this->incidentType === 'non_accident') {
             $rules['diseaseType']         = 'required|string';
             $rules['isHistoricalDisease'] = 'required|in:0,1';
             $rules['isWorkRelated']       = 'required|in:0,1';
+
+            if ($this->isWorkRelated === '1') {
+                $rules['workRelatedDescription'] = 'required|string';
+            }
         }
 
         if ($this->claimCategory === 'hospitalization') {
             $rules['admissionDate'] = 'required|date';
+            $rules['dischargeDate'] = 'required|date';
         }
 
         return $rules;
@@ -265,6 +275,17 @@ class ClaimCreate extends Component
             return false;
         }
 
+        $this->validate([
+            'dateOfEmployment' => 'required|date',
+            'workingHourFrom'  => 'required',
+            'workingHourTo'    => 'required',
+            'tinNo'            => 'required|string|max:50',
+            'sstNo'            => 'required|string|max:50',
+            'companyPicName'   => 'required|string|max:255',
+            'companyPicPhone'  => 'required|string|max:20',
+            'companyPicEmail'  => 'required|email|max:255',
+        ]);
+
         return true;
     }
 
@@ -299,12 +320,21 @@ class ClaimCreate extends Component
     {
         if (! $this->validateDownloads()) return;
 
-        $this->validate([
+        $this->validate(array_merge([
             'claimType'           => 'required|in:fwhs,green_card,perkeso',
             'claimCategory'       => 'required|in:hospitalization,death',
             'incidentDate'        => 'required|date',
             'incidentDescription' => 'required|min:10',
-        ]);
+            'hospitalName'        => 'required|string|max:255',
+            'dateOfEmployment'    => 'required|date',
+            'workingHourFrom'     => 'required',
+            'workingHourTo'       => 'required',
+            'tinNo'               => 'required|string|max:50',
+            'sstNo'               => 'required|string|max:50',
+            'companyPicName'      => 'required|string|max:255',
+            'companyPicPhone'     => 'required|string|max:20',
+            'companyPicEmail'     => 'required|email|max:255',
+        ], $this->step3Rules()));
 
         $claim = DB::transaction(function () {
             // Upsert worker into local DB from found worker data
@@ -409,6 +439,7 @@ class ClaimCreate extends Component
             'facilityMeals'          => $this->facilityMeals,
             'facilityAccommodation'  => $this->facilityAccommodation,
             'facilityTransportation' => $this->facilityTransportation,
+            'insurancePolicyNo'      => $this->insurancePolicyNo,
         ];
 
         $pdf      = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.fcl-form', $data)->setPaper('a4');
