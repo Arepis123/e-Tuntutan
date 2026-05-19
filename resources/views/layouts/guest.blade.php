@@ -19,19 +19,19 @@
 
             {{-- Background image --}}
             <img
-                src="{{ asset('images/background-tuntutan-3.jpg') }}"
+                src="{{ asset('images/background-tuntutan-4.jpg') }}"
                 alt="e-Tuntutan"
                 class="absolute inset-0 w-full h-full object-cover"
             >
 
             {{-- Overlay --}}
-            <div class="absolute inset-0 bg-sky-900/40"></div>
+            <div class="absolute inset-0 bg-sky-900/30"></div>
 
             {{-- Content over image --}}
             <div class="relative z-10 flex flex-col justify-between p-12 w-full">
                 {{-- Brand --}}
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center overflow-hidden">
+                    <div class="w-10 h-10 rounded-xl bg-white backdrop-blur flex items-center justify-center overflow-hidden">
                         <img src="{{ asset('images/logo-clab.png') }}" alt="CLAB" class="w-7 h-7 object-contain" />
                     </div>
                     <span class="text-xl font-semibold text-white">e-Tuntutan</span>
@@ -39,24 +39,24 @@
 
                 {{-- Hero text --}}
                 <div>
-                    <p class="text-sky-100 text-lg max-w-md">
+                    <p class="text-white text-lg max-w-md">
                         Streamlined claim management for FWHS, Green Card, and PERKESO — from submission to closure.
                     </p>
 
                     <div class="flex gap-6 mt-10">
                         <div>
                             <p class="text-2xl font-bold text-white">3</p>
-                            <p class="text-sky-100 text-sm">Claim Types</p>
+                            <p class="text-white text-sm">Claim Types</p>
                         </div>
-                        <div class="w-px bg-white/20"></div>
+                        <div class="w-px bg-white/50"></div>
                         <div>
                             <p class="text-2xl font-bold text-white">Digital</p>
-                            <p class="text-sky-100 text-sm">No More Emails</p>
+                            <p class="text-white text-sm">No More Emails</p>
                         </div>
-                        <div class="w-px bg-white/20"></div>
+                        <div class="w-px bg-white/50"></div>
                         <div>
                             <p class="text-2xl font-bold text-white">CLAB</p>
-                            <p class="text-sky-100 text-sm">Managed</p>
+                            <p class="text-white text-sm">Managed</p>
                         </div>
                     </div>
                 </div>

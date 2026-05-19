@@ -306,7 +306,7 @@ class ClaimCreate extends Component
             'incidentDescription' => 'required|min:10',
         ]);
 
-        DB::transaction(function () {
+        $claim = DB::transaction(function () {
             // Upsert worker into local DB from found worker data
             $worker = Worker::updateOrCreate(
                 ['passport_number' => $this->foundWorker['passport_number']],
@@ -371,10 +371,12 @@ class ClaimCreate extends Component
                 ]);
             }
 
-            // Notify PICs
-            $pics = \App\Models\User::role('pic')->where('notify_on_submission', true)->get();
-            Notification::send($pics, new ClaimSubmittedNotification($claim));
+            return $claim;
         });
+
+        // Notify PICs outside the transaction so email failures don't rollback the claim
+        $pics = \App\Models\User::role('pic')->where('notify_on_submission', true)->get();
+        Notification::send($pics, new ClaimSubmittedNotification($claim));
 
         $this->showSuccessModal = true;
     }

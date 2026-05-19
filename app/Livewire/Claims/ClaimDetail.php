@@ -284,15 +284,31 @@ class ClaimDetail extends Component
         abort_unless($this->claim->insurer_decision === 'rejected' && $this->claim->appeal_count === 0, 403);
 
         $this->claim->update([
-            'appealed_at'  => now(),
-            'appeal_count' => $this->claim->appeal_count + 1,
-            'status'       => 'open',
+            'appealed_at'                   => now(),
+            'appeal_count'                  => $this->claim->appeal_count + 1,
+            'status'                        => 'open',
+            'pre_appeal_insurer_decision'   => $this->claim->insurer_decision,
+            'pre_appeal_insurer_decided_at' => $this->claim->insurer_decided_at,
         ]);
 
         $this->notifyStatusChange();
         $this->claim->refresh();
         $this->modal('employer-appeal')->close();
         $this->dispatch('notify', message: 'Appeal recorded. Please submit to the insurer when ready.');
+    }
+
+    public function markAppealLetterReceived(): void
+    {
+        abort_unless(Auth::user()->hasAnyRole(['admin', 'pic']), 403);
+        abort_unless($this->claim->appealed_at && ! $this->claim->appeal_letter_received_at, 403);
+
+        $this->claim->update([
+            'appeal_letter_received_at' => now(),
+            'appeal_letter_received_by' => Auth::id(),
+        ]);
+
+        $this->claim->refresh();
+        $this->dispatch('notify', message: 'Appeal letter marked as received.');
     }
 
     public function confirmSubmittedToInsurer(bool $notifyContractor = false): void

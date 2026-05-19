@@ -231,10 +231,11 @@ class ClaimAppeal extends Component
                 }
             }
 
-            // Notify PICs
-            $pics = \App\Models\User::role('pic')->where('notify_on_submission', true)->get();
-            Notification::send($pics, new \App\Notifications\ClaimSubmittedNotification($this->claim));
         });
+
+        // Notify PICs outside the transaction so email failures don't rollback the appeal
+        $pics = \App\Models\User::role('pic')->where('notify_on_submission', true)->get();
+        Notification::send($pics, new \App\Notifications\ClaimSubmittedNotification($this->claim));
 
         $this->redirect(route('claims.show', $this->claim), navigate: true);
     }

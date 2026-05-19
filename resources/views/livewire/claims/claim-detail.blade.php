@@ -438,6 +438,46 @@
                 @else
                 <p class="text-sm text-zinc-400">No documents tracked yet.</p>
                 @endif
+
+                {{-- Appeal Letter tracking --}}
+                @if ($claim->appealed_at)
+                <flux:separator class="my-4" />
+                <p class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Appeal</p>
+                <div class="flex items-center justify-between p-3 rounded-lg border
+                    {{ $claim->appeal_letter_received_at
+                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                        : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700' }}">
+                    <div class="flex items-center gap-3">
+                        @if ($claim->appeal_letter_received_at)
+                            <flux:icon.check-circle class="w-5 h-5 text-green-500 shrink-0" />
+                        @else
+                            <flux:icon.clock class="w-5 h-5 text-zinc-400 shrink-0" />
+                        @endif
+                        <div>
+                            <p class="text-sm font-medium text-zinc-800 dark:text-zinc-200">Official Appeal Letter</p>
+                            @if ($claim->appeal_letter_received_at)
+                            <p class="text-xs text-green-600 dark:text-green-400">
+                                Received on {{ $claim->appeal_letter_received_at->format('d/m/Y H:i') }}
+                                @if ($claim->appeal_letter_received_by)
+                                    by {{ \App\Models\User::find($claim->appeal_letter_received_by)?->name }}
+                                @endif
+                            </p>
+                            @else
+                            <p class="text-xs text-zinc-400">Awaiting physical appeal letter from client</p>
+                            @endif
+                        </div>
+                    </div>
+                    @if (! $claim->appeal_letter_received_at)
+                    @can('claims.approve')
+                    <flux:button wire:click="markAppealLetterReceived" size="sm" variant="ghost" icon="check">
+                        Mark Received
+                    </flux:button>
+                    @endcan
+                    @else
+                    <flux:badge size="sm">Received</flux:badge>
+                    @endif
+                </div>
+                @endif
             </flux:card>
             @endif
 
@@ -640,7 +680,7 @@
                         'rejected'         => $claim->rejected_at,
                         'docs_pre'         => ($claim->documents_received_at && (!$appealed || $claim->documents_received_at <= $appealed)) ? $claim->documents_received_at : null,
                         'insurer_sub_pre'  => ($claim->submitted_to_insurer_at && (!$appealed || $claim->submitted_to_insurer_at <= $appealed)) ? $claim->submitted_to_insurer_at : null,
-                        'insurer_dec_pre'  => ($claim->insurer_decision && $claim->insurer_decided_at && (!$appealed || $claim->insurer_decided_at <= $appealed)) ? $claim->insurer_decided_at : null,
+                        'insurer_dec_pre'  => $appealed && $claim->pre_appeal_insurer_decided_at ? $claim->pre_appeal_insurer_decided_at : (!$appealed && $claim->insurer_decision && $claim->insurer_decided_at ? $claim->insurer_decided_at : null),
                         'appealed'         => $appealed,
                         'docs_post'        => ($claim->documents_received_at && $appealed && $claim->documents_received_at > $appealed) ? $claim->documents_received_at : null,
                         'insurer_sub_post' => ($claim->submitted_to_insurer_at && $appealed && $claim->submitted_to_insurer_at > $appealed) ? $claim->submitted_to_insurer_at : null,
@@ -732,10 +772,14 @@
                     @endif
 
                     {{-- Pre-appeal: Insurer Decision --}}
-                    @if ($claim->insurer_decision && (!$appealed || $claim->insurer_decided_at <= $appealed))
+                    @php
+                        $preDecision   = $appealed ? $claim->pre_appeal_insurer_decision : $claim->insurer_decision;
+                        $preDecidedAt  = $appealed ? $claim->pre_appeal_insurer_decided_at : $claim->insurer_decided_at;
+                    @endphp
+                    @if ($preDecision && $preDecidedAt)
                     <flux:timeline.item>
                         <flux:timeline.indicator :color="$latestKey === 'insurer_dec_pre' ? 'green' : null">
-                            @if ($claim->insurer_decision === 'approved')
+                            @if ($preDecision === 'approved')
                                 <flux:icon.circle-check variant="micro" />
                             @else
                                 <flux:icon.x variant="micro" />
@@ -743,18 +787,15 @@
                         </flux:timeline.indicator>
                         <flux:timeline.content>
                             <div class="flex items-center justify-between">
-                                <flux:heading>Insurer {{ $claim->insurer_decision === 'approved' ? 'Approved' : 'Rejected' }}</flux:heading>
-                                <flux:text class="text-xs text-zinc-400">{{ $claim->insurer_decided_at->format('M j, g:i A') }}</flux:text>
+                                <flux:heading>Insurer {{ $preDecision === 'approved' ? 'Approved' : 'Rejected' }}</flux:heading>
+                                <flux:text class="text-xs text-zinc-400">{{ $preDecidedAt->format('M j, g:i A') }}</flux:text>
                             </div>
-                            {{-- @if ($claim->insurerDecidedBy)
-                            <flux:text class="text-xs mt-0.5">Recorded by {{ $claim->insurerDecidedBy->name }}</flux:text>
-                            @endif --}}
-                            @if ($claim->insurer_decision === 'approved' && $claim->payment_channel)
+                            @if ($preDecision === 'approved' && !$appealed && $claim->payment_channel)
                             <flux:text class="text-xs mt-0.5">
                                 Payment channel: <strong>{{ $claim->payment_channel === 'clab' ? 'Transfer to CLAB' : 'Transfer to Contractor' }}</strong>
                             </flux:text>
                             @endif
-                            @if ($claim->insurer_decision === 'rejected' && $claim->insurer_rejection_reason)
+                            @if ($preDecision === 'rejected' && $claim->insurer_rejection_reason)
                             <flux:text class="text-xs mt-0.5 text-red-500">{{ $claim->insurer_rejection_reason }}</flux:text>
                             @endif
                         </flux:timeline.content>
@@ -898,6 +939,27 @@
                             <flux:text class="text-sm mb-4">You are required to submit this claim directly to <strong>{{ $insurerLabel }}</strong>. Once submitted, please confirm below so CLAB can track the progress.</flux:text>
                             <flux:button wire:click="openEmployerSubmissionModal" variant="primary" size="sm" icon="paper-airplane">
                                 Yes, I have submitted to {{ $insurerLabel }}
+                            </flux:button>
+                        </div>
+                    </div>
+                </flux:card>
+                @elseif (! $isEmployerManaged && auth()->user()->hasAnyRole(['admin', 'pic'])
+                    && $claim->appeal_letter_received_at
+                    && (! $claim->submitted_to_insurer_at || $claim->submitted_to_insurer_at <= $claim->appealed_at))
+                <style>
+                    @keyframes blink4 { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+                    .blink-4 { animation: blink4 0.6s ease-in-out 3; }
+                </style>
+                <flux:card class="blink-4 dark:bg-zinc-900 border border-amber-300 dark:border-amber-700">
+                    <div class="flex items-start gap-4">
+                        <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/30 shrink-0">
+                            <flux:icon.exclamation-triangle class="w-5 h-5 text-amber-500" />
+                        </div>
+                        <div class="flex-1">
+                            <flux:heading size="md" class="mb-1">Pending: Resubmit Appeal to Insurer</flux:heading>
+                            <flux:text class="text-sm mb-4">The appeal letter has been received. Have you submitted the appeal to <strong>{{ $insurerLabel }}</strong>?</flux:text>
+                            <flux:button wire:click="openInsurerModal" variant="primary" size="sm" icon="paper-airplane">
+                                Yes, I have resubmitted to {{ $insurerLabel }}
                             </flux:button>
                         </div>
                     </div>
@@ -1049,19 +1111,43 @@
                 @if ($emailLogs->isEmpty())
                 <flux:text class="text-sm text-zinc-400 dark:text-zinc-500">No emails sent yet.</flux:text>
                 @else
-                <div class="space-y-3">
-                    @foreach ($emailLogs as $log)
-                    <div class="flex gap-3 text-sm">
+                <div x-data="{ expanded: false }" class="space-y-3">
+                    @foreach ($emailLogs as $i => $log)
+                    <div class="flex gap-3 text-sm"
+                        x-show="{{ $i }} < 3 || expanded"
+                        x-transition:enter="transition duration-300 ease-out"
+                        x-transition:enter-start="opacity-0 -translate-y-1"
+                        x-transition:enter-end="opacity-100 translate-y-0"
+                    >
                         <div class="mt-0.5 w-7 h-7 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
                             <flux:icon.envelope class="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
                         </div>
                         <div class="flex-1 min-w-0">
                             <p class="font-medium text-zinc-800 dark:text-zinc-100 leading-snug">{{ $log->event }}</p>
-                            <p class="text-zinc-500 dark:text-zinc-400 truncate">To: {{ $log->to_name ? $log->to_name.' &lt;'.$log->to_email.'&gt;' : $log->to_email }}</p>
+                            <p class="text-zinc-500 dark:text-zinc-400 truncate">To: {{ $log->to_name ? $log->to_name. ' - ' .$log->to_email. ' ' : $log->to_email }}</p>
                             <p class="text-zinc-400 dark:text-zinc-500 text-xs mt-0.5">{{ $log->sent_at->format('d M Y, g:i A') }}</p>
                         </div>
                     </div>
                     @endforeach
+
+                    @if ($emailLogs->count() > 3)
+                    <div class="flex justify-center mt-1">
+                        <button
+                            x-show="!expanded"
+                            x-on:click="expanded = true"
+                            class="text-xs text-blue-500 dark:text-blue-400 hover:underline"
+                        >
+                            View more emails ({{ $emailLogs->count() - 3 }} more)
+                        </button>
+                        <button
+                            x-show="expanded"
+                            x-on:click="expanded = false"
+                            class="text-xs text-zinc-400 dark:text-zinc-500 hover:underline"
+                        >
+                            View less
+                        </button>
+                    </div>
+                    @endif
                 </div>
                 @endif
             </flux:card>
