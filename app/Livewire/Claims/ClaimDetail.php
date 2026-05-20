@@ -382,7 +382,7 @@ class ClaimDetail extends Component
             return;
         }
 
-        $docList = $missing->map(fn($d) => '- ' . $d->getDocumentTypeLabel())->join("\n");
+        $docList = $missing->map(fn($d) => '& ' . $d->getDocumentTypeLabel())->join("\n");
         $claim   = $this->claim;
 
         $this->emailSubject = "[e-Tuntutan] Action Required — Missing Documents: {$claim->claim_number}";
@@ -393,7 +393,6 @@ class ClaimDetail extends Component
             "Claim No.: {$claim->claim_number}\nWorker: {$claim->worker->name} ({$claim->worker->passport_number})",
             "Missing Documents:\n{$docList}",
             "Please submit the above documents at your earliest convenience to avoid delays in processing your claim.",
-            "Thank you,\ne-Tuntutan CLAB",
         ]);
 
         $this->modal('notify-missing-docs')->show();
@@ -418,13 +417,14 @@ class ClaimDetail extends Component
             }
         }
 
-        if ($this->claim->user) {
-            $this->claim->user->notify(new \App\Notifications\MissingDocumentsNotification(
-                $this->claim,
-                $this->emailSubject,
-                $this->emailBody,
-                $ccEmails,
-            ));
+        if ($this->claim->company_pic_email) {
+            \Illuminate\Support\Facades\Notification::route('mail', $this->claim->company_pic_email)
+                ->notify(new \App\Notifications\MissingDocumentsNotification(
+                    $this->claim,
+                    $this->emailSubject,
+                    $this->emailBody,
+                    $ccEmails,
+                ));
         }
 
         $this->modal('notify-missing-docs')->close();

@@ -4,6 +4,7 @@ namespace App\Livewire\Claims;
 
 use App\Models\Claim;
 use App\Models\Worker;
+use App\Notifications\ClaimReceivedByEmployerNotification;
 use App\Notifications\ClaimSubmittedNotification;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -407,6 +408,15 @@ class ClaimCreate extends Component
         // Notify PICs outside the transaction so email failures don't rollback the claim
         $pics = \App\Models\User::role('pic')->where('notify_on_submission', true)->get();
         Notification::send($pics, new ClaimSubmittedNotification($claim));
+
+        // Notify the client's PIC with both the submitted alert and a confirmation receipt
+        if ($claim->company_pic_email) {
+            Notification::route('mail', $claim->company_pic_email)
+                ->notify(new ClaimSubmittedNotification($claim));
+
+            Notification::route('mail', $claim->company_pic_email)
+                ->notify(new ClaimReceivedByEmployerNotification($claim));
+        }
 
         $this->showSuccessModal = true;
     }

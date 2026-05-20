@@ -1361,7 +1361,7 @@
     <flux:modal name="notify-missing-docs" class="max-w-2xl">
         <div class="p-6 space-y-4">
             <flux:heading size="lg">Notify Contractor — Missing Documents</flux:heading>
-            <flux:text class="text-sm">Review and edit the email before sending. The email will be sent to <strong>{{ $claim->user?->email }}</strong>.</flux:text>
+            <flux:text class="text-sm">Review and edit the email before sending. The email will be sent to <strong>{{ $claim->company_pic_email }}</strong>.</flux:text>
 
             <flux:field>
                 <flux:label>Subject</flux:label>
