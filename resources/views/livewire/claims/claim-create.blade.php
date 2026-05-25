@@ -69,8 +69,6 @@
             <flux:radio value="perkeso" icon="shield-check" label="PERKESO" description="Social Security (SOCSO)" />
         </flux:radio.group>
 
-        @error('claimType') <p class="text-red-500 dark:text-red-400 text-sm mb-4">{{ $message }}</p> @enderror
-
         <flux:radio.group wire:model="claimCategory" label="Claim Category" variant="cards" :indicator="false" class="mb-6 max-sm:flex-col">
             <flux:radio value="hospitalization" icon="building-office" label="Hospitalization" />
             @if ($claimType !== 'fwhs')
@@ -78,16 +76,12 @@
             @endif
         </flux:radio.group>
 
-        @error('claimCategory') <p class="text-red-500 dark:text-red-400 text-sm mb-4">{{ $message }}</p> @enderror
-
-        @if ($claimType === 'perkeso')
+        @if ($claimType === 'perkeso' && $perkesoSchemeOptions->isNotEmpty())
         <flux:checkbox.group wire:model="perkesoSchemes" label="PERKESO Claim Category" variant="cards" :indicator="false" class="mb-6 max-sm:flex-col">
-            <flux:checkbox value="skim_bencana_kerja" icon="shield-check" label="Skim Bencana Kerja" />
-            <flux:checkbox value="skim_pengurusan_jenazah" icon="user-circle" label="Skim Pengurusan Jenazah" />
-            <flux:checkbox value="skim_luar_waktu_bekerja" icon="clock" label="Skim Luar Waktu Bekerja" />
+            @foreach ($perkesoSchemeOptions as $scheme)
+            <flux:checkbox value="{{ $scheme->value }}" label="{{ $scheme->label }}" />
+            @endforeach
         </flux:checkbox.group>
-
-        @error('perkesoSchemes') <p class="text-red-500 dark:text-red-400 text-sm mb-4">{{ $message }}</p> @enderror
         @endif
 
         @endif

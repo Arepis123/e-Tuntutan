@@ -192,11 +192,7 @@
                     @endif
                     @if ($claim->claim_type === 'perkeso' && !empty($claim->perkeso_schemes))
                     @php
-                        $schemeLabels = [
-                            'skim_bencana_kerja'      => 'Skim Bencana Kerja',
-                            'skim_pengurusan_jenazah' => 'Skim Pengurusan Jenazah',
-                            'skim_luar_waktu_bekerja' => 'Skim Luar Waktu Bekerja',
-                        ];
+                        $schemeLabels = \App\Models\PerkesoScheme::pluck('label', 'value')->toArray();
                     @endphp
                     <div class="col-span-2 sm:col-span-2">
                         <dt class="text-zinc-500 dark:text-zinc-400 mb-1">PERKESO Claim Category</dt>
@@ -678,8 +674,9 @@
                         'submitted'        => $claim->created_at,
                         'approved'         => $claim->approved_at,
                         'rejected'         => $claim->rejected_at,
-                        'docs_pre'         => ($claim->documents_received_at && (!$appealed || $claim->documents_received_at <= $appealed)) ? $claim->documents_received_at : null,
-                        'insurer_sub_pre'  => ($claim->submitted_to_insurer_at && (!$appealed || $claim->submitted_to_insurer_at <= $appealed)) ? $claim->submitted_to_insurer_at : null,
+                        'docs_pre'              => ($claim->documents_received_at && (!$appealed || $claim->documents_received_at <= $appealed)) ? $claim->documents_received_at : null,
+                        'liberty_email_sent'    => ($claim->claim_type === 'fwhs' && $claim->liberty_collection_email_sent_at && (!$appealed || $claim->liberty_collection_email_sent_at <= $appealed)) ? $claim->liberty_collection_email_sent_at : null,
+                        'insurer_sub_pre'       => ($claim->submitted_to_insurer_at && (!$appealed || $claim->submitted_to_insurer_at <= $appealed)) ? $claim->submitted_to_insurer_at : null,
                         'insurer_dec_pre'  => $appealed && $claim->pre_appeal_insurer_decided_at ? $claim->pre_appeal_insurer_decided_at : (!$appealed && $claim->insurer_decision && $claim->insurer_decided_at ? $claim->insurer_decided_at : null),
                         'appealed'         => $appealed,
                         'docs_post'        => ($claim->documents_received_at && $appealed && $claim->documents_received_at > $appealed) ? $claim->documents_received_at : null,
@@ -753,6 +750,22 @@
                     </flux:timeline.item>
                     @endif
 
+                    {{-- Liberty: Collection Email Sent --}}
+                    @if ($claim->claim_type === 'fwhs' && $claim->liberty_collection_email_sent_at && (!$appealed || $claim->liberty_collection_email_sent_at <= $appealed))
+                    <flux:timeline.item>
+                        <flux:timeline.indicator :color="$latestKey === 'liberty_email_sent' ? 'green' : null">
+                            <flux:icon.envelope variant="micro" />
+                        </flux:timeline.indicator>
+                        <flux:timeline.content>
+                            <div class="flex items-center justify-between">
+                                <flux:heading>Collection Request Sent to Howden</flux:heading>
+                                <flux:text class="text-xs text-zinc-400">{{ $claim->liberty_collection_email_sent_at->format('M j, g:i A') }}</flux:text>
+                            </div>
+                            {{-- <flux:text class="text-xs mt-0.5 text-zinc-500">Email sent to Howden to arrange document collection.</flux:text> --}}
+                        </flux:timeline.content>
+                    </flux:timeline.item>
+                    @endif
+
                     {{-- Pre-appeal: Submitted to Insurer --}}
                     @if ($claim->submitted_to_insurer_at && (!$appealed || $claim->submitted_to_insurer_at <= $appealed))
                     <flux:timeline.item>
@@ -761,12 +774,12 @@
                         </flux:timeline.indicator>
                         <flux:timeline.content>
                             <div class="flex items-center justify-between">
-                                <flux:heading>Submitted to Insurer</flux:heading>
+                                <flux:heading>{{ $claim->claim_type === 'fwhs' ? 'Documents Collected by Howden' : 'Submitted to Insurer' }}</flux:heading>
                                 <flux:text class="text-xs text-zinc-400">{{ $claim->submitted_to_insurer_at->format('M j, g:i A') }}</flux:text>
                             </div>
-                            {{-- @if ($claim->submittedToInsurerBy)
-                            <flux:text class="text-xs mt-0.5">By {{ $claim->submittedToInsurerBy->name }}</flux:text>
-                            @endif --}}
+                            @if ($claim->claim_type === 'fwhs' && $claim->liberty_collection_proof)
+                            {{-- <flux:text class="text-xs mt-0.5 text-zinc-500">Proof of collection uploaded.</flux:text> --}}
+                            @endif
                         </flux:timeline.content>
                     </flux:timeline.item>
                     @endif
@@ -965,24 +978,72 @@
                     </div>
                 </flux:card>
                 @elseif (! $isEmployerManaged && auth()->user()->hasAnyRole(['admin', 'pic']) && $claim->documents_received_at)
-                <style>
-                    @keyframes blink3 { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-                    .blink-3 { animation: blink3 0.6s ease-in-out 3; }
-                </style>
-                <flux:card class="blink-3 dark:bg-zinc-900 border border-amber-300 dark:border-amber-700">
-                    <div class="flex items-start gap-4">
-                        <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/30 shrink-0">
-                            <flux:icon.exclamation-triangle class="w-5 h-5 text-amber-500" />
+                    @if ($claim->claim_type === 'fwhs')
+                        {{-- Liberty: Step 1 — Email Liberty for collection --}}
+                        @if (! $claim->liberty_collection_email_sent_at)
+                        <style>
+                            @keyframes blink3 { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+                            .blink-3 { animation: blink3 0.6s ease-in-out 3; }
+                        </style>
+                        <flux:card class="blink-3 dark:bg-zinc-900 border border-amber-300 dark:border-amber-700">
+                            <div class="flex items-start gap-4">
+                                <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/30 shrink-0">
+                                    <flux:icon.envelope class="w-5 h-5 text-amber-500" />
+                                </div>
+                                <div class="flex-1">
+                                    <flux:heading size="md" class="mb-1">Action Required: Notify Liberty for Document Collection</flux:heading>
+                                    <flux:text class="text-sm mb-4">Documents are ready at the CLAB office. Send an email to <strong>Liberty</strong> to arrange collection of the original claim documents.</flux:text>
+                                    <flux:button wire:click="openLibertyCollectionEmailModal" variant="primary" size="sm" icon="paper-airplane">
+                                        Send Collection Request to Liberty
+                                    </flux:button>
+                                </div>
+                            </div>
+                        </flux:card>
+                        @elseif (! $claim->liberty_collected_at)
+                        {{-- Liberty: Step 2 — Confirm Liberty has collected --}}
+                        <flux:card class="dark:bg-zinc-900 border border-blue-300 dark:border-blue-700">
+                            <div class="flex items-start gap-4">
+                                <div class="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 shrink-0">
+                                    <flux:icon.archive-box-arrow-down class="w-5 h-5 text-blue-500" />
+                                </div>
+                                <div class="flex-1">
+                                    <flux:heading size="md" class="mb-1">Pending: Has Howden Collected the Documents?</flux:heading>
+                                    <flux:text class="text-sm text-zinc-500 dark:text-zinc-400 mb-1">
+                                        Collection request sent on {{ $claim->liberty_collection_email_sent_at->format('d/m/Y H:i') }}.
+                                    </flux:text>
+                                    <flux:text class="text-sm mb-4">Confirm once Howden has physically collected the documents from the CLAB office. You will be asked to upload proof of collection.</flux:text>
+                                    <div class="flex flex-wrap gap-2">
+                                        <flux:button wire:click="openLibertyCollectedModal" variant="primary" size="sm" icon="check-circle">
+                                            Yes, Howden Has Collected
+                                        </flux:button>
+                                        <flux:button wire:click="openLibertyCollectionEmailModal" variant="ghost" size="sm" icon="arrow-path">
+                                            Resend Email to Howden
+                                        </flux:button>
+                                    </div>
+                                </div>
+                            </div>
+                        </flux:card>
+                        @endif
+                    @else
+                    <style>
+                        @keyframes blink3 { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+                        .blink-3 { animation: blink3 0.6s ease-in-out 3; }
+                    </style>
+                    <flux:card class="blink-3 dark:bg-zinc-900 border border-amber-300 dark:border-amber-700">
+                        <div class="flex items-start gap-4">
+                            <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/30 shrink-0">
+                                <flux:icon.exclamation-triangle class="w-5 h-5 text-amber-500" />
+                            </div>
+                            <div class="flex-1">
+                                <flux:heading size="md" class="mb-1">Pending: Submit to Insurer</flux:heading>
+                                <flux:text class="text-sm mb-4">Have you submitted this claim application to the insurance provider ({{ $insurerLabel }})?</flux:text>
+                                <flux:button wire:click="openInsurerModal" variant="primary" size="sm" icon="paper-airplane">
+                                    Yes, I have submitted to {{ $insurerLabel }}
+                                </flux:button>
+                            </div>
                         </div>
-                        <div class="flex-1">
-                            <flux:heading size="md" class="mb-1">Pending: Submit to Insurer</flux:heading>
-                            <flux:text class="text-sm mb-4">Have you submitted this claim application to the insurance provider ({{ $insurerLabel }})?</flux:text>
-                            <flux:button wire:click="openInsurerModal" variant="primary" size="sm" icon="paper-airplane">
-                                Yes, I have submitted to {{ $insurerLabel }}
-                            </flux:button>
-                        </div>
-                    </div>
-                </flux:card>
+                    </flux:card>
+                    @endif
                 @endif
             @endif
 
@@ -1206,6 +1267,74 @@
         </div>
     </flux:modal>
 
+    {{-- Liberty: Collection Request Email Compose Modal --}}
+    <flux:modal name="liberty-collection-email" class="max-w-2xl md:w-2xl">
+        <div class="p-6 space-y-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/30">
+                    <flux:icon.envelope class="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                    <flux:heading size="lg">Collection Request Email — Liberty</flux:heading>
+                    <flux:text class="text-sm text-zinc-500">To: <strong>{{ config('services.liberty.email') ?: '(not configured)' }}</strong></flux:text>
+                </div>
+            </div>
+
+            <flux:field>
+                <flux:label>Subject</flux:label>
+                <flux:input wire:model="libertyEmailSubject" />
+                <flux:error name="libertyEmailSubject" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Body</flux:label>
+                <flux:textarea wire:model="libertyEmailBody" rows="14" class="font-mono text-sm" />
+                <flux:error name="libertyEmailBody" />
+            </flux:field>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">Cancel</flux:button>
+                </flux:modal.close>
+                <flux:button wire:click="sendLibertyCollectionEmail" variant="primary" icon="paper-airplane">
+                    Send to Liberty
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Liberty: Confirm Collection + Proof Upload Modal --}}
+    <flux:modal name="liberty-collected" class="max-w-md">
+        <div class="p-6 space-y-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30">
+                    <flux:icon.archive-box-arrow-down class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <flux:heading size="lg">Confirm Liberty Document Collection</flux:heading>
+            </div>
+
+            <flux:text class="text-sm">Confirm that Liberty has physically collected the claim documents from the CLAB office. Upload proof of collection (e.g., acknowledgement slip, photo).</flux:text>
+
+            <div>
+                <flux:label class="mb-1">Proof of Collection <span class="text-red-500">*</span></flux:label>
+                <flux:input type="file" wire:model="libertyCollectionProof" accept=".pdf,.jpg,.jpeg,.png" />
+                @error('libertyCollectionProof')
+                    <flux:text class="text-xs text-red-500 mt-1">{{ $message }}</flux:text>
+                @enderror
+                <flux:text class="text-xs text-zinc-500 mt-1">Accepted: PDF, JPG, PNG (max 10 MB)</flux:text>
+            </div>
+
+            <div class="flex flex-col gap-2 pt-2">
+                <flux:button wire:click="confirmLibertyCollected" variant="primary" icon="check-circle" class="w-full">
+                    Confirm Collection & Notify Client
+                </flux:button>
+                <flux:modal.close>
+                    <flux:button variant="ghost" class="w-full">Cancel</flux:button>
+                </flux:modal.close>
+            </div>
+        </div>
+    </flux:modal>
+
     {{-- Insurer Submission Modal (PIC/Admin) --}}
     <flux:modal name="insurer-submission" class="max-w-md">
         <div class="p-6 space-y-4">
@@ -1377,7 +1506,7 @@
 
             <flux:field>
                 <flux:label>Body</flux:label>
-                <flux:textarea wire:model="emailBody" rows="12" class="font-mono text-sm" />
+                <flux:textarea wire:model="emailBody" rows="30" class="font-mono text-sm" />
                 <flux:error name="emailBody" />
             </flux:field>
 

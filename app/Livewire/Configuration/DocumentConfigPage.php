@@ -34,6 +34,7 @@ class DocumentConfigPage extends Component
 
     public function toggle(int $id, string $field): void
     {
+        $this->authorize('configuration.manage');
         $config = DocumentConfig::findOrFail($id);
         $config->update([$field => !$config->$field]);
     }
@@ -49,6 +50,7 @@ class DocumentConfigPage extends Component
 
     public function saveUpload(): void
     {
+        $this->authorize('configuration.manage');
         $this->validate([
             'uploadLabel' => 'required|string|max:255',
             'uploadFile'  => 'nullable|file|mimes:pdf|max:10240',
@@ -97,6 +99,7 @@ class DocumentConfigPage extends Component
 
     public function saveDocument(): void
     {
+        $this->authorize('configuration.manage');
         $rules = [
             'newLabel'           => 'required|string|max:255',
             'newDocumentType'    => 'required|string|max:100|regex:/^[a-z0-9_]+$/',
@@ -145,6 +148,7 @@ class DocumentConfigPage extends Component
 
     public function deleteDocument(int $id): void
     {
+        $this->authorize('configuration.manage');
         $config = DocumentConfig::findOrFail($id);
 
         if ($config->file_path && str_starts_with($config->file_path, 'documents/')) {

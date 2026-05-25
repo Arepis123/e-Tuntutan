@@ -34,6 +34,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'users.manage',
             // Reports
             'reports.view',
+            // Configuration
+            'configuration.view',
+            'configuration.manage',
         ];
 
         foreach ($permissions as $permission) {

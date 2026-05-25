@@ -11,6 +11,7 @@ use App\Livewire\Users\UserList;
 use App\Livewire\Roles\RoleList;
 use App\Http\Controllers\FclFormController;
 use App\Livewire\Configuration\DocumentConfigPage;
+use App\Livewire\Configuration\PerkesoSchemePage;
 use App\Models\Claim;
 use App\Models\ClaimDocument;
 use Illuminate\Support\Facades\Route;
@@ -61,7 +62,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/tuntutan/fcl-form/preview', [FclFormController::class, 'preview'])->name('claims.fcl.preview');
 
     // Configuration (Admin only)
-    Route::get('/konfigurasi', DocumentConfigPage::class)->name('configuration.index')->middleware('role:admin');
+    Route::prefix('konfigurasi')->middleware('can:configuration.view')->group(function () {
+        Route::redirect('/', '/konfigurasi/dokumen');
+        Route::get('/dokumen', DocumentConfigPage::class)->name('configuration.documents');
+        Route::get('/perkeso-kategori', PerkesoSchemePage::class)->name('configuration.perkeso-schemes');
+    });
 
     // Roles & Permissions (Admin only)
     Route::get('/peranan', RoleList::class)->name('roles.index')->middleware('role:admin');

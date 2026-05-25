@@ -71,18 +71,34 @@
         </flux:sidebar.item>
         @endcan
 
+        @can('configuration.view')
+        <flux:sidebar.group
+            expandable
+            heading="Configuration"
+            icon="cog"
+            class="grid"
+            :expanded="request()->routeIs('configuration.*')"
+        >
+            <flux:sidebar.item
+                href="{{ route('configuration.documents') }}"
+                :current="request()->routeIs('configuration.documents')"
+                wire:navigate
+            >
+                Documents
+            </flux:sidebar.item>
+            <flux:sidebar.item
+                href="{{ route('configuration.perkeso-schemes') }}"
+                :current="request()->routeIs('configuration.perkeso-schemes')"
+                wire:navigate
+            >
+                PERKESO Categories
+            </flux:sidebar.item>
+        </flux:sidebar.group>
+        @endcan
+
         @role('admin')
         <flux:sidebar.item
-            icon="cog"
-            href="{{ route('configuration.index') }}"
-            :current="request()->routeIs('configuration.*')"
-            wire:navigate
-        >
-            Configuration
-        </flux:sidebar.item>
-
-        <flux:sidebar.item
-            icon="shield-check"
+            icon="finger-print"
             href="{{ route('roles.index') }}"
             :current="request()->routeIs('roles.*')"
             wire:navigate

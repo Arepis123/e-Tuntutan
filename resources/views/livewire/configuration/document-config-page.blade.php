@@ -2,7 +2,7 @@
     <div class="flex items-center justify-between mb-6">
         <div>
             <flux:text class="text-2xl font-bold mb-2" variant="strong">Configuration</flux:text>
-            <flux:subheading>Manage required documents for each claim type</flux:subheading>
+            <flux:subheading>Manage required documents for each claim type and category</flux:subheading>
         </div>
         <flux:button wire:click="openAddDocument" variant="primary" icon="plus">
             Add Document

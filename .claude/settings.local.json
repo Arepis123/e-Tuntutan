@@ -38,7 +38,10 @@
       "Bash(Select-String -Pattern \"MAIL\")",
       "PowerShell(Select-String *)",
       "PowerShell(cd \"C:\\\\xampp\\\\htdocs\\\\e-Tuntutan\"; php artisan tinker --execute=\"use App\\\\Models\\\\User; \\\\$pics = User::role\\('pic'\\)->where\\('notify_on_submission', true\\)->get\\(['id','name','email','notify_on_submission']\\); echo \\\\$pics->toJson\\(JSON_PRETTY_PRINT\\);\" 2>&1)",
-      "PowerShell(cd \"C:\\\\xampp\\\\htdocs\\\\e-Tuntutan\"; php artisan tinker --execute=\"Mail::raw\\('Test email from e-Tuntutan', function\\(\\\\$m\\) { \\\\$m->to\\('arepis123@gmail.com'\\)->subject\\('SMTP Test'\\); }\\); echo 'Mail sent OK';\" 2>&1)"
+      "PowerShell(cd \"C:\\\\xampp\\\\htdocs\\\\e-Tuntutan\"; php artisan tinker --execute=\"Mail::raw\\('Test email from e-Tuntutan', function\\(\\\\$m\\) { \\\\$m->to\\('arepis123@gmail.com'\\)->subject\\('SMTP Test'\\); }\\); echo 'Mail sent OK';\" 2>&1)",
+      "Bash(Get-ChildItem -Path \"C:\\\\xampp\\\\htdocs\\\\e-Tuntutan\" -Directory)",
+      "Bash(Select-Object Name)",
+      "PowerShell(ls -Directory \"C:\\\\xampp\\\\htdocs\\\\e-Tuntutan\" | ForEach-Object { $_.Name })"
     ]
   }
 }

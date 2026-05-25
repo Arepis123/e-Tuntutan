@@ -34,6 +34,11 @@ class ClaimDetail extends Component
     public string $insurerRejectionReason = '';
     public $insurerRejectionAttachment = null;
 
+    // Liberty collection
+    public $libertyCollectionProof = null;
+    public string $libertyEmailSubject = '';
+    public string $libertyEmailBody    = '';
+
     // Missing docs email compose
     public string $emailSubject = '';
     public string $emailBody    = '';
@@ -309,6 +314,99 @@ class ClaimDetail extends Component
 
         $this->claim->refresh();
         $this->dispatch('notify', message: 'Appeal letter marked as received.');
+    }
+
+    public function openLibertyCollectionEmailModal(): void
+    {
+        $this->authorize('claims.approve');
+        abort_unless($this->claim->claim_type === 'fwhs' && $this->claim->documents_received_at, 403);
+
+        $libertyEmail = config('services.liberty.email');
+
+        if (empty($libertyEmail)) {
+            $this->dispatch('notify', message: 'Liberty email address is not configured. Please set LIBERTY_EMAIL in .env.');
+            return;
+        }
+
+        $claim = $this->claim;
+        $this->libertyEmailSubject = "[e-Tuntutan CLAB] Document Collection Request: {$claim->claim_number}";
+        $this->libertyEmailBody    = implode("\n\n", [
+            "Dear " . config('services.liberty.name', 'Howden Group') . ",",
+            "CLAB (Construction Labour Exchange Centre Berhad) would like to inform you that the claim documents are ready for collection at our office.",
+            "Claim No.: {$claim->claim_number}\nWorker: {$claim->worker->name} ({$claim->worker->passport_number})\nClaim Type: {$claim->getClaimTypeLabel()}\nDocuments Ready Since: {$claim->documents_received_at->format('d/m/Y')}",
+            "Please arrange to collect the original documents from the CLAB office at your earliest convenience.",
+            "Once collected, our team will update the system accordingly.",
+            "Thank you,\ne-Tuntutan CLAB",
+        ]);
+
+        $this->modal('liberty-collection-email')->show();
+    }
+
+    public function sendLibertyCollectionEmail(): void
+    {
+        $this->authorize('claims.approve');
+        abort_unless($this->claim->claim_type === 'fwhs' && $this->claim->documents_received_at, 403);
+
+        $this->validate([
+            'libertyEmailSubject' => 'required|string|max:255',
+            'libertyEmailBody'    => 'required|string',
+        ]);
+
+        $libertyEmail = config('services.liberty.email');
+
+        \Illuminate\Support\Facades\Notification::route('mail', $libertyEmail)
+            ->notify(new \App\Notifications\LibertyCollectionRequestNotification(
+                $this->claim,
+                $this->libertyEmailSubject,
+                $this->libertyEmailBody
+            ));
+
+        $this->claim->update([
+            'liberty_collection_email_sent_at' => now(),
+            'liberty_collection_email_sent_by' => Auth::id(),
+        ]);
+
+        $this->claim->refresh();
+        $this->modal('liberty-collection-email')->close();
+        $this->dispatch('notify', message: 'Collection request email sent to Liberty.');
+    }
+
+    public function openLibertyCollectedModal(): void
+    {
+        $this->authorize('claims.approve');
+        abort_unless($this->claim->liberty_collection_email_sent_at, 403);
+        $this->libertyCollectionProof = null;
+        $this->modal('liberty-collected')->show();
+    }
+
+    public function confirmLibertyCollected(): void
+    {
+        $this->authorize('claims.approve');
+        abort_unless($this->claim->liberty_collection_email_sent_at, 403);
+
+        $this->validate([
+            'libertyCollectionProof' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png',
+        ]);
+
+        $path = $this->libertyCollectionProof->store('liberty-collection-proofs', 'public');
+
+        $this->claim->update([
+            'liberty_collected_at'    => now(),
+            'liberty_collected_by'    => Auth::id(),
+            'liberty_collection_proof' => $path,
+            'submitted_to_insurer_at' => now(),
+            'submitted_to_insurer_by' => Auth::id(),
+        ]);
+
+        if ($this->claim->user) {
+            $this->claim->user->notify(
+                new \App\Notifications\ClaimSubmittedToInsurerNotification($this->claim)
+            );
+        }
+
+        $this->claim->refresh();
+        $this->modal('liberty-collected')->close();
+        $this->dispatch('notify', message: 'Recorded. Client has been notified that Liberty has collected the documents.');
     }
 
     public function confirmSubmittedToInsurer(bool $notifyContractor = false): void

@@ -72,6 +72,11 @@ class Claim extends Model
         'is_work_related',
         'work_related_description',
         'insurance_policy_no',
+        'liberty_collection_email_sent_at',
+        'liberty_collection_email_sent_by',
+        'liberty_collected_at',
+        'liberty_collected_by',
+        'liberty_collection_proof',
     ];
 
     protected $casts = [
@@ -86,7 +91,9 @@ class Claim extends Model
         'insurer_decided_at'           => 'datetime',
         'pre_appeal_insurer_decided_at' => 'datetime',
         'appealed_at'                => 'datetime',
-        'appeal_letter_received_at'  => 'datetime',
+        'appeal_letter_received_at'           => 'datetime',
+        'liberty_collection_email_sent_at'    => 'datetime',
+        'liberty_collected_at'                => 'datetime',
         'approved_at'             => 'datetime',
         'rejected_at'             => 'datetime',
         'closed_at'               => 'datetime',

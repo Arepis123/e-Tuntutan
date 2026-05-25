@@ -3,6 +3,7 @@
 namespace App\Livewire\Claims;
 
 use App\Models\Claim;
+use App\Models\PerkesoScheme;
 use App\Models\Worker;
 use App\Notifications\ClaimReceivedByEmployerNotification;
 use App\Notifications\ClaimSubmittedNotification;
@@ -257,7 +258,7 @@ class ClaimCreate extends Component
                         'required',
                         $this->claimType === 'fwhs' ? 'in:hospitalization' : 'in:hospitalization,death',
                     ],
-                ], $this->claimType === 'perkeso' ? [
+                ], ($this->claimType === 'perkeso' && PerkesoScheme::active()->exists()) ? [
                     'perkesoSchemes' => 'required|array|min:1',
                 ] : [])),
                 3 => $this->validate($this->step3Rules()),
@@ -489,8 +490,9 @@ class ClaimCreate extends Component
         $configs          = $this->getDocumentConfigs();
         $requiredDocs     = $configs->where('is_required', true);
         $downloadableDocs = $configs->where('is_downloadable', true);
+        $perkesoSchemeOptions = PerkesoScheme::active()->get();
 
-        return view('livewire.claims.claim-create', compact('requiredDocs', 'downloadableDocs'));
+        return view('livewire.claims.claim-create', compact('requiredDocs', 'downloadableDocs', 'perkesoSchemeOptions'));
     }
 
     protected function getDocumentConfigs(): \Illuminate\Support\Collection
