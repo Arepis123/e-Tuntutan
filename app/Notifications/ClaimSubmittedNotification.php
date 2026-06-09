@@ -24,11 +24,15 @@ class ClaimSubmittedNotification extends Notification
         $claim   = $this->claim;
         $subject = "[e-Tuntutan] New Claim: {$claim->claim_number}";
 
-        ClaimEmailLog::record($claim, $notifiable->email, $notifiable->name, $subject, 'Claim Submitted');
+        // User notifiables expose email/name; anonymous (routed) ones do not.
+        $email = $notifiable->email ?? $notifiable->routeNotificationFor('mail') ?? $claim->company_pic_email;
+        $name  = $notifiable->name ?? $claim->company_pic_name ?? 'Sir/Madam';
+
+        ClaimEmailLog::record($claim, $email, $name, $subject, 'Claim Submitted');
 
         return (new MailMessage)
             ->subject($subject)
-            ->greeting("Dear {$notifiable->name},")
+            ->greeting("Dear {$name},")
             ->line("A new claim has been submitted and requires your attention.")
             ->line("**Claim No.:** {$claim->claim_number}")
             ->line("**Type:** {$claim->getClaimTypeLabel()}")

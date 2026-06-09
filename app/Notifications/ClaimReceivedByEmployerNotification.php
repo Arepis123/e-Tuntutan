@@ -20,8 +20,8 @@ class ClaimReceivedByEmployerNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $claim    = $this->claim;
-        $picName  = $claim->company_pic_name ?: $notifiable->name;
-        $picEmail = $claim->company_pic_email ?: $notifiable->email;
+        $picName  = $claim->company_pic_name ?: ($notifiable->name ?? 'Sir/Madam');
+        $picEmail = $claim->company_pic_email ?: ($notifiable->email ?? $notifiable->routeNotificationFor('mail'));
         $subject  = "[e-Tuntutan] Claim Received: {$claim->claim_number}";
 
         ClaimEmailLog::record($claim, $picEmail, $picName, $subject, 'Claim Received (Employer)');
