@@ -406,9 +406,9 @@ class ClaimCreate extends Component
             return $claim;
         });
 
-        // Notify PICs outside the transaction so email failures don't rollback the claim
-        $pics = \App\Models\User::role('pic')->where('notify_on_submission', true)->get();
-        Notification::send($pics, new ClaimSubmittedNotification($claim));
+        // Notify PICs + Admins outside the transaction so email failures don't rollback the claim
+        $recipients = \App\Models\User::staffRecipients();
+        Notification::send($recipients, new ClaimSubmittedNotification($claim));
 
         // Notify the client's PIC with both the submitted alert and a confirmation receipt
         if ($claim->company_pic_email) {

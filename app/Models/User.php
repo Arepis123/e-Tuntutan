@@ -32,6 +32,18 @@ class User extends Authenticatable
     }
 
     /**
+     * Staff who should be notified of any employer activity:
+     * PICs who have email notifications switched on, plus all admins.
+     */
+    public static function staffRecipients(): \Illuminate\Support\Collection
+    {
+        return static::role('pic')->where('notify_on_submission', true)->get()
+            ->merge(static::role('admin')->get())
+            ->unique('id')
+            ->values();
+    }
+
+    /**
      * The attributes that should be hidden for serialization.
      *
      * @var list<string>

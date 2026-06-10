@@ -90,9 +90,9 @@ class ClaimDetail extends Component
                     $this->claim->user->notify(new \App\Notifications\ClaimNoteNotification($this->claim, $author));
                 }
             } else {
-                // Notify all PICs
-                $pics = \App\Models\User::role('pic')->get();
-                Notification::send($pics, new \App\Notifications\ClaimNoteNotification($this->claim, $author));
+                // Employer added a note — notify all PICs + Admins
+                $recipients = \App\Models\User::staffRecipients();
+                Notification::send($recipients, new \App\Notifications\ClaimNoteNotification($this->claim, $author));
             }
         }
 
@@ -424,6 +424,17 @@ class ClaimDetail extends Component
             );
         }
 
+        // Employer-managed claims: the employer performed this step — notify PICs + Admins
+        if ($this->claim->isEmployerManaged()) {
+            Notification::send(
+                \App\Models\User::staffRecipients(),
+                new \App\Notifications\ClaimActivityNotification(
+                    $this->claim,
+                    'submitted the claim to the insurer',
+                )
+            );
+        }
+
         $this->claim->refresh();
         $this->modal('insurer-submission')->close();
         $this->modal('employer-insurer-submission')->close();
@@ -662,6 +673,16 @@ class ClaimDetail extends Component
             $this->claim->update(['status' => 'in_progress']);
         }
 
+        // Employer action — notify PICs + Admins
+        Notification::send(
+            \App\Models\User::staffRecipients(),
+            new \App\Notifications\ClaimActivityNotification(
+                $this->claim,
+                'uploaded a document',
+                str($docType)->replace('_', ' ')->title()->value(),
+            )
+        );
+
         $this->reset('clientUploadFiles');
         $this->claim->load('documents');
         $this->dispatch('notify', message: 'Document uploaded successfully.');
@@ -669,8 +690,8 @@ class ClaimDetail extends Component
 
     protected function notifyStatusChange(): void
     {
-        $pics = \App\Models\User::role('pic')->get();
-        Notification::send($pics, new ClaimStatusChangedNotification($this->claim));
+        $recipients = \App\Models\User::staffRecipients();
+        Notification::send($recipients, new ClaimStatusChangedNotification($this->claim));
     }
 
     public function render()

@@ -42,7 +42,10 @@ class RoleList extends Component
     {
         $roles = Role::all();
 
+        $hidden = ['claims.forward'];
+
         $permissions = Permission::all()
+            ->reject(fn ($p) => in_array($p->name, $hidden) || str_starts_with($p->name, 'payments.'))
             ->groupBy(fn ($p) => ucfirst(explode('.', $p->name)[0]));
 
         return view('livewire.roles.role-list', compact('roles', 'permissions'));
