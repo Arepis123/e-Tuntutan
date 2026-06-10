@@ -28,6 +28,10 @@ class ClaimDetail extends Component
     public bool $showRejectModal = false;
     public bool $showForwardModal = false;
 
+    // Employer cancellation
+    public bool $showCancelModal = false;
+    public string $cancellationReason = '';
+
     // Insurer decision
     public $insurerApprovalLetter = null;
     public string $insurerPaymentChannel = '';
@@ -166,6 +170,39 @@ class ClaimDetail extends Component
 
         $this->notifyStatusChange();
         $this->claim->refresh();
+    }
+
+    /**
+     * Employer cancels their own claim application.
+     */
+    public function confirmCancel(): void
+    {
+        abort_unless(Auth::id() === $this->claim->user_id, 403);
+        abort_if(in_array($this->claim->status, ['closed', 'cancelled']), 403);
+
+        $this->validate(['cancellationReason' => 'required|min:5']);
+
+        $this->claim->update([
+            'status'              => 'cancelled',
+            'cancelled_at'        => now(),
+            'cancelled_by'        => Auth::id(),
+            'cancellation_reason' => $this->cancellationReason,
+        ]);
+
+        // Employer action — notify PICs + Admins
+        Notification::send(
+            \App\Models\User::staffRecipients(),
+            new \App\Notifications\ClaimActivityNotification(
+                $this->claim,
+                'cancelled the claim application',
+                $this->claim->cancellation_reason,
+            )
+        );
+
+        $this->showCancelModal = false;
+        $this->reset('cancellationReason');
+        $this->claim->refresh();
+        $this->dispatch('notify', message: 'Claim application cancelled.');
     }
 
     protected function authorizeInsurerStep(): void
@@ -448,7 +485,14 @@ class ClaimDetail extends Component
     {
         abort_unless(Auth::user()->hasAnyRole(['admin', 'pic']), 403);
 
-        $this->claim->update(['status' => $status]);
+        $updates = ['status' => $status];
+
+        if ($status === 'cancelled' && ! $this->claim->cancelled_at) {
+            $updates['cancelled_at'] = now();
+            $updates['cancelled_by'] = Auth::id();
+        }
+
+        $this->claim->update($updates);
         $this->claim->refresh();
     }
 
@@ -617,6 +661,7 @@ class ClaimDetail extends Component
     public function uploadClientDoc(string $docType): void
     {
         abort_unless(Auth::id() === $this->claim->user_id, 403);
+        abort_if(in_array($this->claim->status, ['closed', 'cancelled']), 403);
 
         $file = $this->clientUploadFiles[$docType] ?? null;
 

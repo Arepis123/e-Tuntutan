@@ -80,6 +80,7 @@ class ClaimList extends Component
                     "claims.*, " .
                     "CASE WHEN claims.in_progress_at IS NULL THEN NULL " .
                     "WHEN claims.status = 'closed' THEN DATEDIFF(claims.closed_at, claims.in_progress_at) " .
+                    "WHEN claims.status = 'cancelled' THEN DATEDIFF(claims.cancelled_at, claims.in_progress_at) " .
                     "ELSE DATEDIFF(NOW(), claims.in_progress_at) END AS days_in_progress"
                 )
                 ->orderByRaw("(days_in_progress IS NULL) ASC, days_in_progress {$sortDir}");

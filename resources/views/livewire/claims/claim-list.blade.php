@@ -69,6 +69,7 @@
                 <flux:select.option value="open">Open</flux:select.option>
                 <flux:select.option value="in_progress">In Progress</flux:select.option>
                 <flux:select.option value="closed">Closed</flux:select.option>
+                <flux:select.option value="cancelled">Cancelled</flux:select.option>
             </flux:select>
             <flux:select wire:model.live="typeFilter" variant="listbox" placeholder="All Types" class="sm:w-44">
                 <flux:select.option value="">All Types</flux:select.option>
@@ -121,6 +122,7 @@
                                 'open'        => 'Open',
                                 'in_progress' => 'In Progress',
                                 'closed'      => 'Closed',
+                                'cancelled'   => 'Cancelled',
                                 default       => $claim->status
                             } }}
                         </flux:badge>
@@ -128,7 +130,7 @@
                     <flux:table.cell>
                         @if ($claim->in_progress_at)
                             @php
-                                $until = $claim->status === 'closed' ? $claim->closed_at : now();
+                                $until = $claim->status === 'closed' ? $claim->closed_at : ($claim->status === 'cancelled' ? $claim->cancelled_at : now());
                                 $days  = (int) $claim->in_progress_at->diffInDays($until);
                             @endphp
                             <flux:badge color="{{ $days >= 60 ? 'red' : ($days >= 30 ? 'yellow' : 'green') }}" size="sm">

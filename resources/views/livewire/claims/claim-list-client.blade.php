@@ -69,6 +69,7 @@
                 <flux:select.option value="open">Open</flux:select.option>
                 <flux:select.option value="in_progress">In Progress</flux:select.option>
                 <flux:select.option value="closed">Closed</flux:select.option>
+                <flux:select.option value="cancelled">Cancelled</flux:select.option>
             </flux:select>
             <flux:select wire:model.live="typeFilter" variant="listbox" placeholder="All Types" class="sm:w-44">
                 <flux:select.option value="">All Types</flux:select.option>
@@ -149,6 +150,7 @@
                                 'open'        => 'Open',
                                 'in_progress' => 'In Progress',
                                 'closed'      => 'Closed',
+                                'cancelled'   => 'Cancelled',
                                 default       => $claim->status
                             } }}
                         </flux:badge>

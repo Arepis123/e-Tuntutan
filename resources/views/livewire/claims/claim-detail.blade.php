@@ -14,29 +14,39 @@
             </div>
         </div>
 
-        @if ($claim->insurer_decision === 'rejected' && $claim->user_id === auth()->id() && auth()->user()->hasRole('employer') && $claim->appeal_count === 0 && ! $claim->isEmployerManaged())
-        <flux:button :href="route('claims.appeal', $claim)" wire:navigate variant="danger" icon="arrow-path">
-            Appeal Claim
-        </flux:button>
-        @endif
-
-        @if (auth()->user()->hasAnyRole(['admin', 'pic']))
-        <flux:dropdown>
-            <flux:button
-                icon:trailing="chevron-down"
-                icon="{{ match($claim->status) { 'open' => 'envelope-open', 'in_progress' => 'clock', 'closed' => 'archive-box', default => 'arrow-path' } }}"
-                color="{{ match($claim->status) { 'open' => 'red', 'in_progress' => 'yellow', 'closed' => 'emerald', default => '' } }}"
-                variant="primary"
-                >
-                {{ match($claim->status) { 'open' => 'Open', 'in_progress' => 'In Progress', 'closed' => 'Closed', default => ucfirst($claim->status) } }}
+        <div class="flex items-center gap-2">
+            @if ($claim->insurer_decision === 'rejected' && $claim->user_id === auth()->id() && auth()->user()->hasRole('employer') && $claim->appeal_count === 0 && ! $claim->isEmployerManaged())
+            <flux:button :href="route('claims.appeal', $claim)" wire:navigate variant="danger" icon="arrow-path">
+                Appeal Claim
             </flux:button>
-            <flux:menu>
-                <flux:menu.item icon="envelope-open" wire:click="changeStatus('open')">Open</flux:menu.item>
-                <flux:menu.item icon="clock" wire:click="changeStatus('in_progress')">In Progress</flux:menu.item>
-                <flux:menu.item icon="archive-box" wire:click="changeStatus('closed')">Closed</flux:menu.item>
-            </flux:menu>
-        </flux:dropdown>
-        @endif
+            @endif
+
+            @if ($claim->user_id === auth()->id() && auth()->user()->hasRole('employer') && ! in_array($claim->status, ['closed', 'cancelled']))
+            <flux:button wire:click="$set('showCancelModal', true)" variant="ghost" icon="x-circle">
+                Cancel Application
+            </flux:button>
+            @endif
+
+            @if (auth()->user()->hasAnyRole(['admin', 'pic']))
+            <flux:dropdown>
+                <flux:button
+                    icon:trailing="chevron-down"
+                    icon="{{ match($claim->status) { 'open' => 'envelope-open', 'in_progress' => 'clock', 'closed' => 'archive-box', 'cancelled' => 'x-circle', default => 'arrow-path' } }}"
+                    color="{{ match($claim->status) { 'open' => 'red', 'in_progress' => 'yellow', 'closed' => 'emerald', 'cancelled' => 'zinc', default => '' } }}"
+                    variant="primary"
+                    >
+                    {{ match($claim->status) { 'open' => 'Open', 'in_progress' => 'In Progress', 'closed' => 'Closed', 'cancelled' => 'Cancelled', default => ucfirst($claim->status) } }}
+                </flux:button>
+                <flux:menu>
+                    <flux:menu.item icon="envelope-open" wire:click="changeStatus('open')">Open</flux:menu.item>
+                    <flux:menu.item icon="clock" wire:click="changeStatus('in_progress')">In Progress</flux:menu.item>
+                    <flux:menu.item icon="archive-box" wire:click="changeStatus('closed')">Closed</flux:menu.item>
+                    <flux:menu.separator />
+                    <flux:menu.item icon="x-circle" variant="danger" wire:click="changeStatus('cancelled')">Cancelled</flux:menu.item>
+                </flux:menu>
+            </flux:dropdown>
+            @endif
+        </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -625,7 +635,7 @@
                     @endforelse
                 </div>
 
-                @if (auth()->user()->hasAnyRole(['admin','pic']) || $claim->status !== 'closed')
+                @if (auth()->user()->hasAnyRole(['admin','pic']) || ! in_array($claim->status, ['closed', 'cancelled']))
                 <div class="border-t border-zinc-200 dark:border-zinc-700 pt-4 space-y-3">
                     <flux:textarea wire:model="newNote" placeholder="Add a note..." rows="3" />
                     <div>
@@ -657,7 +667,7 @@
                 </div>
                 @else
                 <div class="border-t border-zinc-200 dark:border-zinc-700 pt-4">
-                    <flux:text class="text-sm text-zinc-400">This claim is closed. No further notes can be added.</flux:text>
+                    <flux:text class="text-sm text-zinc-400">This claim is {{ $claim->status === 'cancelled' ? 'cancelled' : 'closed' }}. No further notes can be added.</flux:text>
                 </div>
                 @endif
             </flux:card>
@@ -909,6 +919,23 @@
                         </flux:timeline.content>
                     </flux:timeline.item>
                     @endif
+
+                    @if ($claim->cancelled_at)
+                    <flux:timeline.item>
+                        <flux:timeline.indicator color="red">
+                            <flux:icon.x-circle variant="micro" />
+                        </flux:timeline.indicator>
+                        <flux:timeline.content>
+                            <div class="flex items-center justify-between">
+                                <flux:heading>Application Cancelled</flux:heading>
+                                <flux:text class="text-xs text-zinc-400">{{ $claim->cancelled_at->format('M j, g:i A') }}</flux:text>
+                            </div>
+                            @if ($claim->cancellation_reason)
+                            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{{ $claim->cancellation_reason }}</flux:text>
+                            @endif
+                        </flux:timeline.content>
+                    </flux:timeline.item>
+                    @endif
                 </flux:timeline>
             </flux:card>
 
@@ -1093,7 +1120,7 @@
             @endif
 
             {{-- Appeal Rejected — Close Prompt --}}
-            @if ($claim->appeal_count >= 1 && $decisionIsCurrent && $claim->insurer_decision === 'rejected' && $claim->status !== 'closed')
+            @if ($claim->appeal_count >= 1 && $decisionIsCurrent && $claim->insurer_decision === 'rejected' && ! in_array($claim->status, ['closed', 'cancelled']))
             @can('claims.close')
             <flux:card class="dark:bg-zinc-900 border border-red-300 dark:border-red-700">
                 <div class="flex items-start gap-4">
@@ -1122,7 +1149,7 @@
             @endif
 
             {{-- Employer-Managed Appeal Prompt --}}
-            @if ($isEmployerManaged && auth()->id() === $claim->user_id && $decisionIsCurrent && $claim->insurer_decision === 'rejected' && $claim->appeal_count === 0 && $claim->status !== 'closed')
+            @if ($isEmployerManaged && auth()->id() === $claim->user_id && $decisionIsCurrent && $claim->insurer_decision === 'rejected' && $claim->appeal_count === 0 && ! in_array($claim->status, ['closed', 'cancelled']))
             <flux:card class="dark:bg-zinc-900 border border-amber-300 dark:border-amber-700">
                 <div class="flex items-start gap-4">
                     <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/30 shrink-0">
@@ -1224,6 +1251,36 @@
             <div class="flex gap-3 mt-4">
                 <flux:button wire:click="confirmReject" variant="danger">Confirm Reject</flux:button>
                 <flux:button wire:click="$set('showRejectModal', false)" variant="ghost">Cancel</flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    {{-- Cancel Application Modal (Employer) --}}
+    <flux:modal wire:model="showCancelModal" name="cancel-claim" class="max-w-md">
+        <div class="p-6 space-y-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 rounded-lg bg-red-50 dark:bg-red-900/30">
+                    <flux:icon.x-circle class="w-5 h-5 text-red-600 dark:text-red-400" />
+                </div>
+                <flux:heading size="lg">Cancel Application</flux:heading>
+            </div>
+
+            <flux:text>Are you sure you want to cancel this claim application? This will notify CLAB and the claim will be marked as <strong>Cancelled</strong>.</flux:text>
+
+            <flux:textarea
+                wire:model="cancellationReason"
+                label="Reason for cancellation"
+                placeholder="Please tell us why you are cancelling this application..."
+                rows="3"
+            />
+
+            <div class="flex flex-col gap-2 pt-2">
+                <flux:button wire:click="confirmCancel" variant="danger" icon="x-circle" class="w-full">
+                    Cancel Application
+                </flux:button>
+                <flux:button wire:click="$set('showCancelModal', false)" variant="ghost" class="w-full">
+                    Keep Application
+                </flux:button>
             </div>
         </div>
     </flux:modal>

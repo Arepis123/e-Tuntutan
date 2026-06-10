@@ -49,6 +49,9 @@ class Claim extends Model
         'approved_at',
         'rejected_at',
         'closed_at',
+        'cancelled_at',
+        'cancelled_by',
+        'cancellation_reason',
         'rejection_reason',
         'notes',
         'tin_no',
@@ -97,6 +100,7 @@ class Claim extends Model
         'approved_at'             => 'datetime',
         'rejected_at'             => 'datetime',
         'closed_at'               => 'datetime',
+        'cancelled_at'            => 'datetime',
     ];
 
     public function worker(): BelongsTo
@@ -150,8 +154,25 @@ class Claim extends Model
             'open'        => 'red',
             'in_progress' => 'yellow',
             'closed'      => 'green',
+            'cancelled'   => 'zinc',
             default       => 'zinc',
         };
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            'open'        => 'Open',
+            'in_progress' => 'In Progress',
+            'closed'      => 'Closed',
+            'cancelled'   => 'Cancelled',
+            default       => ucfirst($this->status),
+        };
+    }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function getClaimTypeLabel(): string
