@@ -24,11 +24,11 @@ class ClaimNoteNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $claim    = $this->claim;
-        $picEmail = $claim->company_pic_email;
-        $picName  = $claim->company_pic_name ?: $notifiable->name;
+        $picEmail = $claim->company_pic_email ?: $notifiable->routeNotificationFor('mail');
+        $picName  = $claim->company_pic_name ?: ($notifiable->name ?? 'Sir/Madam');
         $subject  = "[e-Tuntutan] New Message on Claim: {$claim->claim_number}";
 
-        ClaimEmailLog::record($claim, $picEmail ?: $notifiable->email, $picName, $subject, 'New Note');
+        ClaimEmailLog::record($claim, $picEmail, $picName, $subject, 'New Note');
 
         $mail = (new MailMessage)
             ->subject($subject)

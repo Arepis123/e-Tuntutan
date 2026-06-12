@@ -90,9 +90,7 @@ class ClaimDetail extends Component
 
             if ($author->hasAnyRole(['admin', 'pic'])) {
                 // Notify the client (employer) via company PIC email
-                if ($this->claim->user) {
-                    $this->claim->user->notify(new \App\Notifications\ClaimNoteNotification($this->claim, $author));
-                }
+                $this->claim->notifyClient(new \App\Notifications\ClaimNoteNotification($this->claim, $author));
             } else {
                 // Employer added a note — notify all PICs + Admins
                 $recipients = \App\Models\User::staffRecipients();
@@ -251,8 +249,8 @@ class ClaimDetail extends Component
 
         if ($this->claim->isEmployerManaged()) {
             $this->notifyStatusChange();
-        } elseif ($this->claim->user) {
-            $this->claim->user->notify(new \App\Notifications\InsurerDecisionNotification($this->claim));
+        } else {
+            $this->claim->notifyClient(new \App\Notifications\InsurerDecisionNotification($this->claim));
         }
 
         $this->claim->refresh();
@@ -287,8 +285,8 @@ class ClaimDetail extends Component
 
         if ($this->claim->isEmployerManaged()) {
             $this->notifyStatusChange();
-        } elseif ($this->claim->user) {
-            $this->claim->user->notify(new \App\Notifications\InsurerDecisionNotification($this->claim));
+        } else {
+            $this->claim->notifyClient(new \App\Notifications\InsurerDecisionNotification($this->claim));
         }
 
         $this->claim->refresh();
@@ -435,11 +433,9 @@ class ClaimDetail extends Component
             'submitted_to_insurer_by' => Auth::id(),
         ]);
 
-        if ($this->claim->user) {
-            $this->claim->user->notify(
-                new \App\Notifications\ClaimSubmittedToInsurerNotification($this->claim)
-            );
-        }
+        $this->claim->notifyClient(
+            new \App\Notifications\ClaimSubmittedToInsurerNotification($this->claim)
+        );
 
         $this->claim->refresh();
         $this->modal('liberty-collected')->close();
@@ -455,8 +451,8 @@ class ClaimDetail extends Component
             'submitted_to_insurer_by' => Auth::id(),
         ]);
 
-        if ($notifyContractor && ! $this->claim->isEmployerManaged() && $this->claim->user) {
-            $this->claim->user->notify(
+        if ($notifyContractor && ! $this->claim->isEmployerManaged()) {
+            $this->claim->notifyClient(
                 new \App\Notifications\ClaimSubmittedToInsurerNotification($this->claim)
             );
         }

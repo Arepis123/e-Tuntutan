@@ -21,11 +21,11 @@ class InsurerDecisionNotification extends Notification
     {
         $claim    = $this->claim;
         $approved = $claim->insurer_decision === 'approved';
-        $picEmail = $claim->company_pic_email;
-        $picName  = $claim->company_pic_name ?: $notifiable->name;
+        $picEmail = $claim->company_pic_email ?: $notifiable->routeNotificationFor('mail');
+        $picName  = $claim->company_pic_name ?: ($notifiable->name ?? 'Sir/Madam');
         $subject  = "[e-Tuntutan] Insurer Decision: {$claim->claim_number} — " . ($approved ? 'Approved' : 'Not Approved');
 
-        ClaimEmailLog::record($claim, $picEmail ?: $notifiable->email, $picName, $subject, 'Insurer Decision: ' . ($approved ? 'Approved' : 'Not Approved'));
+        ClaimEmailLog::record($claim, $picEmail, $picName, $subject, 'Insurer Decision: ' . ($approved ? 'Approved' : 'Not Approved'));
 
         $mail = (new MailMessage)
             ->subject($subject)

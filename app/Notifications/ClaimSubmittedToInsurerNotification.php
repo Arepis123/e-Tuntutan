@@ -20,11 +20,11 @@ class ClaimSubmittedToInsurerNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $claim    = $this->claim;
-        $picEmail = $claim->company_pic_email;
-        $picName  = $claim->company_pic_name ?: $notifiable->name;
+        $picEmail = $claim->company_pic_email ?: $notifiable->routeNotificationFor('mail');
+        $picName  = $claim->company_pic_name ?: ($notifiable->name ?? 'Sir/Madam');
         $subject  = "[e-Tuntutan] Application Submitted to Insurer: {$claim->claim_number}";
 
-        ClaimEmailLog::record($claim, $picEmail ?: $notifiable->email, $picName, $subject, 'Submitted to Insurer');
+        ClaimEmailLog::record($claim, $picEmail, $picName, $subject, 'Submitted to Insurer');
 
         $mail = (new MailMessage)
             ->subject($subject)

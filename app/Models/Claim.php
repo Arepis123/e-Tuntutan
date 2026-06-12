@@ -191,6 +191,31 @@ class Claim extends Model
             && $this->worker?->worker_type === 'existing';
     }
 
+    /**
+     * Notify the client (employer) about this claim.
+     *
+     * Delivers to the company PIC email captured on the claim when available,
+     * otherwise falls back to the owning user's account email. Returns true
+     * if a recipient was found and the notification was dispatched.
+     */
+    public function notifyClient(\Illuminate\Notifications\Notification $notification): bool
+    {
+        if ($this->company_pic_email) {
+            \Illuminate\Support\Facades\Notification::route('mail', $this->company_pic_email)
+                ->notify($notification);
+
+            return true;
+        }
+
+        if ($this->user) {
+            $this->user->notify($notification);
+
+            return true;
+        }
+
+        return false;
+    }
+
     protected static function booted(): void
     {
         static::creating(function (Claim $claim) {

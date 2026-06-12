@@ -190,7 +190,19 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <flux:input wire:model="companyPicName" label="Name" placeholder="Full name" required />
             <flux:input wire:model="companyPicPhone" label="Phone Number" placeholder="e.g. 0123456789" required />
-            <flux:input wire:model="companyPicEmail" label="Email" type="email" placeholder="e.g. pic@company.com" required />
+            <flux:field>
+                <flux:label class="flex items-center gap-1">
+                    Email
+                    <flux:tooltip toggleable>
+                        <flux:button icon="information-circle" size="sm" variant="ghost" class="-my-1" />
+                        <flux:tooltip.content class="max-w-[18rem]">
+                            <p>This email will be used as the <strong>primary address</strong> for all claim notifications.</p>
+                        </flux:tooltip.content>
+                    </flux:tooltip>
+                </flux:label>
+                <flux:input wire:model="companyPicEmail" type="email" placeholder="e.g. pic@company.com" required />
+                <flux:error name="companyPicEmail" />
+            </flux:field>
         </div>
         @endif
         @endif
