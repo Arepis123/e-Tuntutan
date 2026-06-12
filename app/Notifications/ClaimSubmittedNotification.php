@@ -24,9 +24,13 @@ class ClaimSubmittedNotification extends Notification
         $claim   = $this->claim;
         $subject = "[e-Tuntutan] New Claim: {$claim->claim_number}";
 
-        // User notifiables expose email/name; anonymous (routed) ones do not.
+        // Sent to two audiences: internal staff (User notifiables, greet by their
+        // own name) and the employer's PIC (routed by email — greet by the PIC name
+        // captured on the claim, never the submitting user's account name).
         $email = $notifiable->email ?? $notifiable->routeNotificationFor('mail') ?? $claim->company_pic_email;
-        $name  = $notifiable->name ?? $claim->company_pic_name ?? 'Sir/Madam';
+        $name  = $notifiable instanceof \App\Models\User
+            ? $notifiable->name
+            : ($claim->company_pic_name ?: 'Sir/Madam');
 
         ClaimEmailLog::record($claim, $email, $name, $subject, 'Claim Submitted');
 
