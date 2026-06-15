@@ -534,13 +534,13 @@ class ClaimDetail extends Component
         $docList = $missing->map(fn($d) => '& ' . $d->getDocumentTypeLabel())->join("\n");
         $claim   = $this->claim;
 
-        $this->emailSubject = "[e-Tuntutan] Action Required — Missing Documents: {$claim->claim_number}";
+        $this->emailSubject = "[e-Tuntutan] Action Required — Incomplete Documents: {$claim->claim_number}";
         $this->emailCc      = '';
         $this->emailBody    = implode("\n\n", [
             "Dear {$claim->user?->name},",
             "We have reviewed your claim and found that the following required documents have not yet been received:",
             "Claim No.: {$claim->claim_number}\nWorker: {$claim->worker->name} ({$claim->worker->passport_number})",
-            "Missing Documents:\n{$docList}",
+            "Incomplete Documents:\n{$docList}",
             "Please submit the above documents at your earliest convenience to avoid delays in processing your claim.",
         ]);
 
