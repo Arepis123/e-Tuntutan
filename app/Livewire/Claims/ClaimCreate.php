@@ -202,12 +202,14 @@ class ClaimCreate extends Component
             return;
         }
 
-        $permitExp = $worker->wkr_permitexp ?? null;
-        $invalidDates = ['0000-00-00', '1970-01-01', null, ''];
-        if (in_array($permitExp, $invalidDates) || $permitExp <= now()->toDateString()) {
-            $this->addError('passportNumber', 'This worker\'s work permit has expired or is invalid. Claims can only be submitted for workers with a valid permit.');
-            return;
-        }
+        // TEMPORARILY DISABLED: allow claims for workers with a missing/expired permit.
+        // To re-enable the permit validation, simply uncomment the block below.
+        // $permitExp = $worker->wkr_permitexp ?? null;
+        // $invalidDates = ['0000-00-00', '1970-01-01', null, ''];
+        // if (in_array($permitExp, $invalidDates) || $permitExp <= now()->toDateString()) {
+        //     $this->addError('passportNumber', 'This worker\'s work permit has expired or is invalid. Claims can only be submitted for workers with a valid permit.');
+        //     return;
+        // }
 
         $isOutsource = \DB::connection('worker_db')
             ->table('contract_worker')
