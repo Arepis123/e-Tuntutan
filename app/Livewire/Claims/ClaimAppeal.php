@@ -166,6 +166,7 @@ class ClaimAppeal extends Component
         $this->validate([
             'incidentDate'        => 'required|date',
             'incidentDescription' => 'required|min:10',
+            'uploadedFiles.*'     => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png',
         ]);
 
         DB::transaction(function () {

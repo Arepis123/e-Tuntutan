@@ -612,7 +612,7 @@ class ClaimDetail extends Component
     public function uploadDocument(): void
     {
         $this->validate([
-            'newDocument'     => 'required|file|max:10240',
+            'newDocument'     => 'required|file|max:10240|mimes:pdf,doc,docx,jpg,jpeg,png',
             'newDocumentType' => 'required|string',
         ]);
 

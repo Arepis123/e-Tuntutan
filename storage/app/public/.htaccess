@@ -1,0 +1,10 @@
+# Served via public/storage — allow files to download, but never execute scripts.
+<FilesMatch "(?i)\.(php\d?|phtml|pht|phar|phps|cgi|pl|py|sh)$">
+    Require all denied
+</FilesMatch>
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+RemoveHandler .php .phtml .pht .phar
+RemoveType .php .phtml .pht .phar
+Options -ExecCGI
