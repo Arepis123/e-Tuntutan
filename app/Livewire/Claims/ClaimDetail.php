@@ -52,6 +52,9 @@ class ClaimDetail extends Component
     public string $newDocumentType = '';
     public array $clientUploadFiles = [];
 
+    // Change history (admin only)
+    public bool $showHistory = false;
+
     public function mount(Claim $claim): void
     {
         $this->claim = $claim;
@@ -767,11 +770,23 @@ class ClaimDetail extends Component
         Notification::send($recipients, new ClaimStatusChangedNotification($this->claim));
     }
 
+    public function toggleHistory(): void
+    {
+        abort_unless(Auth::user()->hasRole('admin'), 403);
+
+        $this->showHistory = ! $this->showHistory;
+    }
+
     public function render()
     {
-        $this->claim->load(['worker', 'user', 'documents', 'claimNotes.user', 'payment']);
+        $this->claim->load(['worker', 'user', 'documents', 'claimNotes.user', 'payment', 'rejectedBy']);
         $docConfigs = $this->getDocumentConfigs();
 
-        return view('livewire.claims.claim-detail', compact('docConfigs'));
+        // Audit rows include IPs, so only admins see them, and only on demand.
+        $auditLogs = $this->showHistory && Auth::user()->hasRole('admin')
+            ? $this->claim->auditLogs()->limit(100)->get()
+            : collect();
+
+        return view('livewire.claims.claim-detail', compact('docConfigs', 'auditLogs'));
     }
 }
