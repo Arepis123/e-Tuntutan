@@ -671,6 +671,80 @@
                 </div>
                 @endif
             </flux:card>
+
+            {{-- Change History (admin only) --}}
+            @if (auth()->user()->hasRole('admin'))
+            <flux:card class="dark:bg-zinc-900">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <flux:heading size="lg">Change History</flux:heading>
+                        <flux:text class="text-sm">Every change to this claim: who, what, when and from where.</flux:text>
+                    </div>
+                    <flux:button wire:click="toggleHistory" size="sm" variant="ghost"
+                        :icon="$showHistory ? 'chevron-up' : 'chevron-down'">
+                        {{ $showHistory ? 'Hide' : 'Show' }}
+                    </flux:button>
+                </div>
+
+                @if ($showHistory)
+                <div class="mt-4 space-y-3">
+                    @forelse ($auditLogs as $log)
+                    <div wire:key="audit-{{ $log->id }}" class="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800 text-sm">
+                        <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                            <div class="flex flex-wrap items-center gap-2 min-w-0">
+                                <span class="font-medium text-zinc-800 dark:text-zinc-100 truncate">
+                                    {{ $log->user_name ?? ($log->source === 'console' ? 'System (console)' : 'Unknown user') }}
+                                </span>
+                                @if ($log->user_roles)
+                                <flux:badge size="sm" color="zinc">{{ $log->user_roles }}</flux:badge>
+                                @elseif ($log->user_id)
+                                <flux:badge size="sm" color="red">no role</flux:badge>
+                                @endif
+                                <flux:badge size="sm" :color="match($log->event) { 'created' => 'green', 'deleted', 'force_deleted' => 'red', default => 'blue' }">
+                                    {{ $log->event }}
+                                </flux:badge>
+                                @if ($log->action)
+                                <code class="text-xs text-zinc-500 dark:text-zinc-400 break-all">{{ \Illuminate\Support\Str::limit($log->action, 60) }}</code>
+                                @endif
+                            </div>
+                            <span class="text-xs text-zinc-400 whitespace-nowrap">{{ $log->created_at->format('M j, Y g:i:s A') }}</span>
+                        </div>
+
+                        @if ($log->changes)
+                        <dl class="mt-2 space-y-1">
+                            @foreach ($log->changes as $field => $change)
+                            <div class="grid grid-cols-1 sm:grid-cols-[10rem_1fr] gap-x-3">
+                                <dt class="text-xs font-medium text-zinc-500 dark:text-zinc-400 break-all">{{ $field }}</dt>
+                                <dd class="text-xs text-zinc-700 dark:text-zinc-300 break-words">
+                                    <span class="line-through text-zinc-400">{{ \Illuminate\Support\Str::limit(is_scalar($change['old'] ?? null) ? (string) $change['old'] : json_encode($change['old'] ?? null), 120) ?: '—' }}</span>
+                                    <span class="text-zinc-400">→</span>
+                                    <span>{{ \Illuminate\Support\Str::limit(is_scalar($change['new'] ?? null) ? (string) $change['new'] : json_encode($change['new'] ?? null), 120) ?: '—' }}</span>
+                                </dd>
+                            </div>
+                            @endforeach
+                        </dl>
+                        @endif
+
+                        @if ($log->ip_address || $log->user_email)
+                        <p class="mt-2 text-xs text-zinc-400 break-all">
+                            {{ collect([$log->user_email, $log->ip_address ? 'IP '.$log->ip_address : null])->filter()->implode(' · ') }}
+                            @if ($log->user_agent)
+                            <span title="{{ $log->user_agent }}"> · {{ \Illuminate\Support\Str::limit($log->user_agent, 40) }}</span>
+                            @endif
+                        </p>
+                        @endif
+                    </div>
+                    @empty
+                    <flux:text class="text-sm text-zinc-400">No changes recorded yet. Logging started when the audit trail was deployed; earlier changes aren't available.</flux:text>
+                    @endforelse
+
+                    @if ($auditLogs->count() === 100)
+                    <flux:text class="text-xs text-zinc-400">Showing the latest 100 changes.</flux:text>
+                    @endif
+                </div>
+                @endif
+            </flux:card>
+            @endif
         </div>
 
         {{-- Sidebar --}}
@@ -732,7 +806,7 @@
                         </flux:timeline.indicator>
                         <flux:timeline.content>
                             <div class="flex items-center justify-between">
-                                <flux:heading>Rejected by PIC</flux:heading>
+                                <flux:heading>Rejected by {{ $claim->rejectedBy?->name ?? 'PIC' }}</flux:heading>
                                 <flux:text class="text-xs text-zinc-400">{{ $claim->rejected_at->format('M j, g:i A') }}</flux:text>
                             </div>
                             @if ($claim->rejection_reason)

@@ -17,7 +17,7 @@ class Dashboard extends Component
 
         $query = Claim::query();
 
-        if ($user->hasRole('employer')) {
+        if (! $user->hasAnyRole(['admin', 'pic'])) {
             $query->where('user_id', $user->id);
         }
 

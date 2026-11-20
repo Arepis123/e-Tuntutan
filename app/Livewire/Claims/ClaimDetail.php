@@ -52,9 +52,34 @@ class ClaimDetail extends Component
     public string $newDocumentType = '';
     public array $clientUploadFiles = [];
 
+    // Change history (admin only)
+    public bool $showHistory = false;
+
     public function mount(Claim $claim): void
     {
         $this->claim = $claim;
+        $this->authorizeView();
+    }
+
+    /**
+     * Re-check access on every Livewire request, not only the first render.
+     */
+    public function hydrate(): void
+    {
+        $this->authorizeView();
+    }
+
+    /**
+     * Staff (admin/PIC) may view any claim; everyone else only their own.
+     */
+    protected function authorizeView(): void
+    {
+        $user = Auth::user();
+
+        abort_unless(
+            $user && ($user->hasAnyRole(['admin', 'pic']) || $user->id === $this->claim->user_id),
+            403
+        );
     }
 
     public function addNote(): void
@@ -128,11 +153,14 @@ class ClaimDetail extends Component
 
     public function confirmReject(): void
     {
+        $this->authorize('claims.reject');
+
         $this->validate(['rejectionReason' => 'required|min:5']);
 
         $this->claim->update([
             'status'           => 'open',
             'rejected_at'      => now(),
+            'rejected_by'      => Auth::id(),
             'rejection_reason' => $this->rejectionReason,
         ]);
 
@@ -144,6 +172,8 @@ class ClaimDetail extends Component
 
     public function confirmForward(): void
     {
+        $this->authorize('claims.approve');
+
         $this->validate(['forwardTo' => 'required|in:perkeso,green_card']);
 
         $this->claim->update([
@@ -582,6 +612,8 @@ class ClaimDetail extends Component
 
     public function markDocumentReceived(int $documentId): void
     {
+        $this->authorize('claims.approve');
+
         $doc = $this->claim->documents()->findOrFail($documentId);
 
         $doc->update([
@@ -611,6 +643,9 @@ class ClaimDetail extends Component
 
     public function uploadDocument(): void
     {
+        // Staff-side upload; employers use uploadClientDoc() instead.
+        $this->authorize('claims.approve');
+
         $this->validate([
             'newDocument'     => 'required|file|max:10240|mimes:pdf,doc,docx,jpg,jpeg,png',
             'newDocumentType' => 'required|string',
@@ -735,11 +770,23 @@ class ClaimDetail extends Component
         Notification::send($recipients, new ClaimStatusChangedNotification($this->claim));
     }
 
+    public function toggleHistory(): void
+    {
+        abort_unless(Auth::user()->hasRole('admin'), 403);
+
+        $this->showHistory = ! $this->showHistory;
+    }
+
     public function render()
     {
-        $this->claim->load(['worker', 'user', 'documents', 'claimNotes.user', 'payment']);
+        $this->claim->load(['worker', 'user', 'documents', 'claimNotes.user', 'payment', 'rejectedBy']);
         $docConfigs = $this->getDocumentConfigs();
 
-        return view('livewire.claims.claim-detail', compact('docConfigs'));
+        // Audit rows include IPs, so only admins see them, and only on demand.
+        $auditLogs = $this->showHistory && Auth::user()->hasRole('admin')
+            ? $this->claim->auditLogs()->limit(100)->get()
+            : collect();
+
+        return view('livewire.claims.claim-detail', compact('docConfigs', 'auditLogs'));
     }
 }
