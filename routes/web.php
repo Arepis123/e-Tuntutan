@@ -21,7 +21,9 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
-Route::middleware(['auth'])->group(function () {
+// Every authenticated page requires a known role. Users without a role
+// (e.g. accounts not created via admin or e-CLAB sync) get a 403.
+Route::middleware(['auth', 'role:admin|pic|employer'])->group(function () {
     Route::get('/dashboard', Dashboard::class)->name('dashboard');
 
     // Claims

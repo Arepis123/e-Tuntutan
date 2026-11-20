@@ -63,6 +63,8 @@ class UserList extends Component
 
     public function createUser(): void
     {
+        $this->authorize('users.manage');
+
         $this->validate([
             'form.name'     => 'required|string|max:255',
             'form.email'    => 'required|email|unique:users,email',
@@ -87,6 +89,8 @@ class UserList extends Component
 
     public function openEdit(int $userId): void
     {
+        $this->authorize('users.manage');
+
         $user = User::with('roles')->findOrFail($userId);
 
         $this->editingUserId = $userId;
@@ -104,6 +108,8 @@ class UserList extends Component
 
     public function updateUser(): void
     {
+        $this->authorize('users.manage');
+
         $this->validate([
             'editForm.name'     => 'required|string|max:255',
             'editForm.email'    => 'required|email|unique:users,email,' . $this->editingUserId,

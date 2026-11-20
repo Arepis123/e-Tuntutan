@@ -55,6 +55,28 @@ class ClaimDetail extends Component
     public function mount(Claim $claim): void
     {
         $this->claim = $claim;
+        $this->authorizeView();
+    }
+
+    /**
+     * Re-check access on every Livewire request, not only the first render.
+     */
+    public function hydrate(): void
+    {
+        $this->authorizeView();
+    }
+
+    /**
+     * Staff (admin/PIC) may view any claim; everyone else only their own.
+     */
+    protected function authorizeView(): void
+    {
+        $user = Auth::user();
+
+        abort_unless(
+            $user && ($user->hasAnyRole(['admin', 'pic']) || $user->id === $this->claim->user_id),
+            403
+        );
     }
 
     public function addNote(): void
@@ -128,11 +150,14 @@ class ClaimDetail extends Component
 
     public function confirmReject(): void
     {
+        $this->authorize('claims.reject');
+
         $this->validate(['rejectionReason' => 'required|min:5']);
 
         $this->claim->update([
             'status'           => 'open',
             'rejected_at'      => now(),
+            'rejected_by'      => Auth::id(),
             'rejection_reason' => $this->rejectionReason,
         ]);
 
@@ -144,6 +169,8 @@ class ClaimDetail extends Component
 
     public function confirmForward(): void
     {
+        $this->authorize('claims.approve');
+
         $this->validate(['forwardTo' => 'required|in:perkeso,green_card']);
 
         $this->claim->update([
@@ -582,6 +609,8 @@ class ClaimDetail extends Component
 
     public function markDocumentReceived(int $documentId): void
     {
+        $this->authorize('claims.approve');
+
         $doc = $this->claim->documents()->findOrFail($documentId);
 
         $doc->update([
@@ -611,6 +640,9 @@ class ClaimDetail extends Component
 
     public function uploadDocument(): void
     {
+        // Staff-side upload; employers use uploadClientDoc() instead.
+        $this->authorize('claims.approve');
+
         $this->validate([
             'newDocument'     => 'required|file|max:10240|mimes:pdf,doc,docx,jpg,jpeg,png',
             'newDocumentType' => 'required|string',

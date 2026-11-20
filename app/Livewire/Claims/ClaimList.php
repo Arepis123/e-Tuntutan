@@ -59,7 +59,7 @@ class ClaimList extends Component
         $sortDir = $this->sortDirection === 'asc' ? 'asc' : 'desc';
 
         $query = Claim::with(['worker', 'user', 'documents'])
-            ->when($user->hasRole('employer'), fn ($q) => $q->where('user_id', $user->id))
+            ->when(! $user->hasAnyRole(['admin', 'pic']), fn ($q) => $q->where('user_id', $user->id))
             ->when($this->search, fn ($q) => $q->whereHas('worker', fn ($wq) => $wq->where('name', 'like', "%{$this->search}%")
                 ->orWhere('passport_number', 'like', "%{$this->search}%"))
                 ->orWhere('claim_number', 'like', "%{$this->search}%"))
@@ -90,7 +90,7 @@ class ClaimList extends Component
 
         $claims = $query->paginate(15);
 
-        $baseQuery = Claim::when($user->hasRole('employer'), fn ($q) => $q->where('user_id', $user->id));
+        $baseQuery = Claim::when(! $user->hasAnyRole(['admin', 'pic']), fn ($q) => $q->where('user_id', $user->id));
         $stats = [
             'total'       => (clone $baseQuery)->count(),
             'open'        => (clone $baseQuery)->where('status', 'open')->count(),
@@ -98,7 +98,7 @@ class ClaimList extends Component
             'closed'      => (clone $baseQuery)->where('status', 'closed')->count(),
         ];
 
-        $view = $user->hasRole('employer')
+        $view = ! $user->hasAnyRole(['admin', 'pic'])
             ? 'livewire.claims.claim-list-client'
             : 'livewire.claims.claim-list';
 

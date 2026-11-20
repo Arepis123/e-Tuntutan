@@ -17,6 +17,8 @@ class RoleList extends Component
 
     public function mount(): void
     {
+        abort_unless(auth()->user()?->hasRole('admin'), 403);
+
         $first = Role::first();
         if ($first) {
             $this->selectRole($first->name);
@@ -25,6 +27,8 @@ class RoleList extends Component
 
     public function selectRole(string $roleName): void
     {
+        abort_unless(auth()->user()?->hasRole('admin'), 403);
+
         $this->selectedRole = $roleName;
         $role = Role::findByName($roleName);
         $this->rolePermissions = $role->permissions->pluck('name')->toArray();
@@ -32,6 +36,8 @@ class RoleList extends Component
 
     public function savePermissions(): void
     {
+        abort_unless(auth()->user()?->hasRole('admin'), 403);
+
         $role = Role::findByName($this->selectedRole);
         $role->syncPermissions($this->rolePermissions);
 

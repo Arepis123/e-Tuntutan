@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Observers\ClaimObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+#[ObservedBy(ClaimObserver::class)]
 class Claim extends Model
 {
     use SoftDeletes;
@@ -48,6 +51,7 @@ class Claim extends Model
         'appeal_letter_received_by',
         'approved_at',
         'rejected_at',
+        'rejected_by',
         'closed_at',
         'cancelled_at',
         'cancelled_by',
@@ -168,6 +172,16 @@ class Claim extends Model
             'cancelled'   => 'Cancelled',
             default       => ucfirst($this->status),
         };
+    }
+
+    public function rejectedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    public function auditLogs(): HasMany
+    {
+        return $this->hasMany(ClaimAuditLog::class)->latest('id');
     }
 
     public function cancelledBy(): BelongsTo
